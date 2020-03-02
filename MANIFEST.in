@@ -1,0 +1,2 @@
+recursive-include apricot/src *.cpp
+recursive-include apricot/src *.h
