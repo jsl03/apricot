@@ -20,12 +20,19 @@ Both [matplotlib](https://github.com/matplotlib/matplotlib) and [seaborn](https:
 
 ## Installation
 
-**apricot** has currently only been tested on Linux.
+**apricot** has currently only been tested on Linux. 
+
+It can be installed using `pip3` from inside the apricot source directory:
+
+`pip3 install --user .`
 
 ## Acknowledgements
 
 This package makes use of one or more pieces of code from the following authors:
- 
-* **apricot**'s `setup.py` features code directly from [pybind/python\_example] (https://github.com/pybind/python_example).
 
-* The sobol sampling submodule is derived from [naught101/sobol\_seq](https://github.com/naught101/sobol_seq).
+* **apricot**'s `setup.py` features code directly from [pybind/python\_example](https://github.com/pybind/python_example).
+
+* The sobol sampling submodule uses code derived from [naught101/sobol\_seq](https://github.com/naught101/sobol_seq).
+
+* The lengthscale parameter prior distributions used inside **apricot** closely follow considerations outlined by [Michael Betancourt](https://betanalpha.github.io/) in his three-part series ([part 1](https://betanalpha.github.io/assets/case_studies/gp_part1/part1.html), [part 2](https://betanalpha.github.io/assets/case_studies/gp_part2/part2.html), [part 3](https://betanalpha.github.io/assets/case_studies/gp_part3/part3.html)) on robust GP regression.
+
