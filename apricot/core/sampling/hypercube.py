@@ -7,11 +7,16 @@ from apricot.core.sampling.lhs import(
     mdurs
 )
 from apricot.core.sampling.factorial import factorial
-from apricot.core.utils import _force_f_array
+from apricot.core.utils import _force_f_array, set_seed
+
+def urandom(n, d, seed=None):
+    """Uniform random sample"""
+    set_seed(seed)
+    return np.random.random((n, d))
 
 # valid methods for obtaining a sample on [0,1]^d
 _METHODS = {
-    'urandom': lambda n, d: np.random.random((n, d)),
+    'urandom': urandom, 
     'lhs':lhs,
     'olhs':optimised_lhs,
     'mdurs':mdurs,
@@ -23,7 +28,7 @@ _METHODS = {
 def show_methods():
     print(set(_METHODS.keys()))
 
-def sample_hypercube(n, d, method, options=None):
+def sample_hypercube(n, d, method, seed=None, options=None):
     """ Unified interface to obtaining uniform random variables on [0,1]^d.
 
     Generate n sets of d-dimensional points using the method 'method'.
@@ -62,15 +67,15 @@ def sample_hypercube(n, d, method, options=None):
             number of samples, d is the number of dimensions and a is the
             returned number of samples. Future versions should allow variable
             numbers of points in each input dimension.
+    seed : {None, int32}
+        Random seed. Ignored if the algorithm is not randomised.
+    options : dict
+        Dictionary of additional options to supply to the sampling algorithm.
 
     Returns
     -------
     urvs : ndarray
         (n,d) array of independent uniform random variables on [0,1]
-
-    Notes
-    -----
-    TODO: add ability to supply a random seed
 
     References
     ----------
@@ -92,4 +97,4 @@ def sample_hypercube(n, d, method, options=None):
     if method not in _METHODS:
         raise ValueError('method must be one of {methods}.'.
                          format(methods = set(_METHODS.keys())))
-    return _force_f_array(_METHODS[method](n, d, **options))
+    return _force_f_array(_METHODS[method](n, d, seed=seed, **options))

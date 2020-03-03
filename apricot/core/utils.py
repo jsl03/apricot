@@ -60,12 +60,18 @@ def random_seed():
 
     Note
     ----
-    Until scipy.optimize accepts a random seed, many apricot methods cannot be
+    Until scipy.optimize accepts a random seed, some apricot methods cannot be
     made deterministic since the results of preliminary optimisations (e.g. to
     construct an empirically derived prior distribution) cannot be tightly
     controlled.
     """
     return np.random.randint(np.iinfo(np.int32).max)
+
+def set_seed(seed):
+    if seed is None:
+        np.random.seed(random_seed())
+    else:
+        np.random.seed(seed)
 
 def is_string(x):
     """Return True if x is a string of finite length"""

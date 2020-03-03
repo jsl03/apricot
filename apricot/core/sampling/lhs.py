@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.spatial.distance import cdist
+from apricot.core.utils import set_seed
 
 def _maximin(v, p=2):
     """'maximin' LHS quality criteria of Morris and Mitchell (1995).
@@ -40,7 +41,7 @@ _CRITERIA = {
     'maximin': _maximin,
 }
 
-def lhs(n,d):
+def lhs(n, d, seed=None):
     """Latin Hypercube Sample design.
 
     Generate n stratified samples in d dimensions by drawing samples from a
@@ -67,6 +68,7 @@ def lhs(n,d):
     mdurs
     optimised_lhs
     """
+    set_seed(seed)
     slices = np.linspace(0,1,n+1)
     urnd = np.random.random((n,d))
     l = slices[:n]
@@ -79,7 +81,7 @@ def lhs(n,d):
         s[:,j] = points[index, j]
     return s
 
-def mdurs(n, d, scale_factor=10, k=2, measure='cityblock'):
+def mdurs(n, d, scale_factor=10, k=2, measure='cityblock', seed=None):
     """Multi-dimensionally uniform random sample.
 
     Implements the "LHSMDU" algorithm of Deutsch and Deutsch [1]_.
@@ -130,7 +132,8 @@ def mdurs(n, d, scale_factor=10, k=2, measure='cityblock'):
     optimised_lhs
     scipy.spatial.distance.cdist
     """
-    nr = scaleFactor * n
+    set_seed(seed)
+    nr = scale_factor * n
     S = np.random.random((nr, d))
     while S.shape[0] > n:
         l = S.shape[0]
@@ -145,7 +148,7 @@ def mdurs(n, d, scale_factor=10, k=2, measure='cityblock'):
     return S
 
 def optimised_lhs(n, d, iterations=100, measure='euclidean', criteria='maximin',
-        options=None):
+                  options=None, seed=None):
     """Optimised Latin Hypercube Sample design.
 
     Pick a sample from a collection of latin hypercube designs maximising a
@@ -207,6 +210,8 @@ def optimised_lhs(n, d, iterations=100, measure='euclidean', criteria='maximin',
     scipy.spatial.distance.cdist : documentation for different measures.
     evalCriteria : evaluates 'criteria' for 'measure'.
     """
+
+    set_seed(seed)
 
     if options is None:
         options = {}

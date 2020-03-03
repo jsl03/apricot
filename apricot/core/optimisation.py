@@ -3,7 +3,8 @@ from scipy.optimize import minimize
 from apricot.core.utils import _force_f_array
 from apricot.core.sampling import sample_hypercube
 
-def optimise(f, f_jac, d, x0=None, grid=None, grid_size=None, grid_method='lhs', grid_options=None):
+def optimise(f, f_jac, d, x0=None, grid=None, grid_size=None, grid_method='lhs',
+             grid_options=None, seed=None):
     """ Generic numerical optimisation routine using SLSQP
 
     Generic numerical optimisation strategy consisting of a preliminary grid
@@ -34,6 +35,8 @@ def optimise(f, f_jac, d, x0=None, grid=None, grid_size=None, grid_method='lhs',
     grid_options : dict, optional
         Additional options to pass to the sampling algorithm described by
         'grid method'. Default=None.
+    seed : {None, int32}
+        Random seed. Default=None.
 
     Returns
     -------
@@ -46,7 +49,8 @@ def optimise(f, f_jac, d, x0=None, grid=None, grid_size=None, grid_method='lhs',
             'grid' : grid,
             'grid_size' : grid_size,
             'grid_method' : grid_method,
-            'grid_options' : grid_options
+            'grid_options' : grid_options,
+            'seed' : seed,
         }
         x0 = grid_search(f, d, **opts)
 
@@ -68,9 +72,9 @@ def optimise(f, f_jac, d, x0=None, grid=None, grid_size=None, grid_method='lhs',
 
     return ret
 
-def grid_search(f, d, grid=None, grid_size=None, grid_method='lhs', grid_options=None):
+def grid_search(f, d, grid=None, grid_size=None, grid_method='lhs', grid_options=None, seed=None):
     """ Preliminary grid search"""
-    xgrid = _get_grid(d, grid=None, grid_size=None, grid_method='lhs', grid_options=None)
+    xgrid = _get_grid(d, grid=None, grid_size=None, grid_method='lhs', grid_options=None, seed=seed)
     fxgrid = f(xgrid)
     return xgrid[fxgrid.argmin(),:]
 
@@ -142,11 +146,11 @@ def _check_grid_shape_nd_internal(xgrid, d):
         # TODO fix this exception (print information)
         raise ValueError
 
-def _get_grid(d, grid=None, grid_size=None, grid_method='lhs', grid_options=None):
+def _get_grid(d, grid=None, grid_size=None, grid_method='lhs', grid_options=None, seed=None):
     if grid is None:
         if grid_size is None:
             grid_size = 100*d
-        grid = sample_hypercube(grid_size, d, grid_method, grid_options)
+        grid = sample_hypercube(grid_size, d, method=grid_method, seed=seed, options=grid_options)
     else:
         grid = _check_grid(grid, d)
     return grid

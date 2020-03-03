@@ -106,6 +106,7 @@ setup(
     packages = setuptools.find_packages(),
     ext_modules=ext_modules,
     install_requires=['pybind11>=2.2','pystan','numpy'],
+    include_package_data = True,
     cmdclass={'build_ext': BuildExt},
     headers= ['apricot/src/kernels.h'],
     zip_safe=False,

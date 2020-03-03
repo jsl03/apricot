@@ -375,7 +375,7 @@ class Emulator:
         return self._gp.entropy(xstar)
 
     def optimise(self, mode='min', x0=None, grid=None, grid_size=None,
-                 grid_method='lhs', grid_options=None):
+                 grid_method='lhs', grid_options=None, seed=None):
         """ Global Min/Max of the posterior expectation
 
         Use numerical optimisation to estimate the global minimum or maximum of
@@ -407,6 +407,8 @@ class Emulator:
         grid_options : dict, optional
             Dictionary of additional options to pass to grid_method. Default
             = None.
+        seed : {None, int32}
+            Random seed. Used for preliminary grid generation. Default = None.
         """
         _mode = mode.lower()
         if _mode == 'min':
@@ -425,7 +427,8 @@ class Emulator:
             'grid' : grid,
             'grid_size' : grid_size,
             'grid_method' : grid_method,
-            'grid_options' : grid_options
+            'grid_options' : grid_options,
+            'seed' : seed,
         }
         result = optimise(f, f_jac, self.d, **opts)
         if _mode == 'max':
@@ -433,7 +436,7 @@ class Emulator:
         return result
 
     def next_ei(self, x0=None, grid=None, grid_size=None, grid_method='lhs',
-                grid_options=None):
+                grid_options=None, seed=None):
         """ Get next point using expected improvement
 
         Use numerical optimisation to estimate the global minimum of the
@@ -462,6 +465,8 @@ class Emulator:
         grid_options : dict, optional
             Dictionary of additional options to pass to grid_method. Default
             = None.
+        seed : {None, int32}
+            Random seed. Used for preliminary grid generation. Default = None.
 
         See Also
         --------
@@ -475,12 +480,13 @@ class Emulator:
             'grid' : grid,
             'grid_size' : grid_size,
             'grid_method' : grid_method,
-            'grid_options' : grid_options
+            'grid_options' : grid_options,
+            'seed' : seed,
         }
         return optimise(f, f_jac, self.d, **opts)
 
     def next_px(self, x0=None, grid=None, grid_size=None, grid_method='lhs',
-                grid_options=None):
+                grid_options=None, seed=None):
         """ Get next point using the pure exploration acquisition function
 
         Use numerical optimisation to estimate the global minimum of the
@@ -510,6 +516,8 @@ class Emulator:
         grid_options : dict, optional
             Dictionary of additional options to pass to grid_method. Default
             = None.
+        seed : {None, int32}
+            Random seed. Used for preliminary grid generation. Default = None.
 
         See Also
         --------
@@ -523,12 +531,13 @@ class Emulator:
             'grid' : grid,
             'grid_size' : grid_size,
             'grid_method' : grid_method,
-            'grid_options' : grid_options
+            'grid_options' : grid_options,
+            'seed' : seed,
         }
         return optimise(f, f_jac, self.d, **opts)
 
     def next_ucb(self, beta, x0=None, grid=None, grid_size=None, grid_method='lhs',
-                 grid_options=None):
+                 grid_options=None, seed=None):
         """ Get next point using the upper confidence bound acquisition function
 
         Use numerical optimisation to estimate the global minimum of the
@@ -559,6 +568,8 @@ class Emulator:
         grid_options : dict, optional
             Dictionary of additional options to pass to grid_method. Default
             = None.
+        seed : {None, int32}
+            Random seed. Used for preliminary grid generation. Default = None.
 
         See Also
         --------
@@ -573,11 +584,12 @@ class Emulator:
             'grid' : grid,
             'grid_size' : grid_size,
             'grid_method' : grid_method,
-            'grid_options' : grid_options
+            'grid_options' : grid_options,
+            'seed' : seed,
         }
         return optimise(f, f_jac, self.d, **opts)
 
-    def sobol1(self, n=1000, method='sobol'):
+    def sobol1(self, n=1000, method='sobol', seed=None):
         """ Calculate first order Sobol indices for the emulator.
 
         Approximates first order Sobol indices for the emulator using Monte-Carlo
@@ -590,6 +602,8 @@ class Emulator:
             Default = 1000.
         method : str, optional
             Sampling method. Default = 'sobol'.
+        seed : {None, int32}
+            Random seed. Used for sample grid generation. Default = None.
 
         References
         ----------
@@ -600,7 +614,7 @@ class Emulator:
         """
 
         # generate the sample points and split into arrays A and B
-        X = apricot.sample_hypercube(n, 2*self.d, method)
+        X = apricot.sample_hypercube(n, 2*self.d, method=method, seed=seed)
         A = X[:,:self.d]
         B = X[:,self.d:]
 

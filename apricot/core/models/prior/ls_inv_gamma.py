@@ -2,6 +2,7 @@ import functools
 import numpy as np
 from scipy.special import gammaincc, gamma
 from scipy.optimize import root
+from apricot.core.utils import set_seed
 
 def ls_inv_gamma_prior(x, options=None, seed=None):
     """ Inverse Gamma lengthscale hyperprior
@@ -123,6 +124,8 @@ def create_objective(lower, upper, lower_tol, upper_tol):
     return functools.partial(inv_gamma_tail, lower, upper, lower_tol, upper_tol)
 
 def solve_inv_gamma(lb, ub, lb_tol, ub_tol, gridsize=10000, max_attempts=3, seed=None):
+
+    set_seed(seed)
     if lb > ub:
         raise ValueError('Lower bound cannot be greater than upper bound.')
     obj = create_objective(lb, ub, lb_tol, ub_tol)
@@ -131,12 +134,7 @@ def solve_inv_gamma(lb, ub, lb_tol, ub_tol, gridsize=10000, max_attempts=3, seed
     scales = np.array([10, 10])
     obj_grid = np.empty((gridsize, 2))
     while not converged:
-
-        if seed:
-            np.random.seed(seed + attempts)
-
         theta_grid = np.random.random((gridsize, 2))*scales
-
         # objective function is not vectorised, so run in loop...
         for i in range(gridsize):
             obj_grid[i,:] = obj(theta_grid[i,:])
@@ -147,7 +145,6 @@ def solve_inv_gamma(lb, ub, lb_tol, ub_tol, gridsize=10000, max_attempts=3, seed
         converged = theta_sol['success']
         if attempts > max_attempts:
             raise RuntimeError('Maximum number of attempts exceeded without convergence.')
-
     return theta_sol['x'][0], theta_sol['x'][1]
 
 def format_options(options, d):

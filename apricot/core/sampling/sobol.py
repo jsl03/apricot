@@ -19,10 +19,11 @@ Original code is available at http://people.sc.fsu.edu/~jburkardt/py_src/sobol/s
 from __future__ import division
 import numpy as np
 import six
+from apricot.core.utils import set_seed
 
-def sobol_scatter(n, d, seed=1, skip=0):
+def sobol_scatter(n, d, seed=None, generator_seed=1, skip=0):
     """ Generate n length d quasi-random vectors using the Sobol sequence, with
-    additive uniform randomization.
+    additive uniform randomisation.
 
     Implements i4sobol_generate from the sobol_seq package but without the
     ability to change the dimension of the sequence after it has been
@@ -34,6 +35,12 @@ def sobol_scatter(n, d, seed=1, skip=0):
         The number of random vectors to retrieve.
     d : int
         The dimension of the random vectors
+    seed : {None, int32}
+        Random seed for numpy. Default = None.
+    generator_seed : int
+        Seed for the Sobol sequence generator. Default = 1.
+    skip : int
+        Skip every this number of generated points. Default = 0.
 
     Returns
     -------
@@ -61,19 +68,18 @@ def sobol_scatter(n, d, seed=1, skip=0):
     i4_sobol2 : Sobol sequence generator.
 
     """
+    set_seed(seed)
     r = np.empty((n, d))
-    seq_generator = i4_sobol2(d, seed=seed, skip=skip)
+    seq_generator = i4_sobol2(d, generator_seed=generator_seed, skip=skip)
     for j in range(n):
         r[j, :] = six.next(seq_generator)
-
     r += np.random.random(size=r.shape)
     while( (r<0).any() | (r>1).any()):
         r[r>1] -= 1
         r[r<0] += 1
-
     return r
 
-def sobol(n, d, seed=1, skip=0):
+def sobol(n, d, seed=None, generator_seed=1, skip=0):
     """ Generate n length d quasi-random vectors from the Sobol sequence.
 
     Generate n length d quasi-random vectors using the Sobol sequence [1]_.
@@ -88,6 +94,15 @@ def sobol(n, d, seed=1, skip=0):
         The number of random vectors to retrieve.
     d : int
         The dimension of the random vectors
+    seed : {None, int32}
+        Random seed for numpy. Default = None. Note that this algorithm is
+        deterministic, so this keyword argument currently has no effect on this
+        function. For a Sobol sequence featuring randomisation, see
+        sobol_scatter.
+    generator_seed : int
+        Seed for the Sobol sequence generator. Default = 1
+    skip : int
+        Skip every this number of generated points. Default = 0.
 
     Returns
     -------
@@ -114,11 +129,11 @@ def sobol(n, d, seed=1, skip=0):
     sobol_scatter : Sobol sequence with additive randomisation.
     i4_sobol2 : Sobol sequence generator.
     """
+    set_seed(seed)
     r = np.empty((n, d))
-    seq_generator = i4_sobol2(d, seed=seed, skip=skip)
+    seq_generator = i4_sobol2(d, generator_seed=generator_seed, skip=skip)
     for j in range(n):
         r[j, :] = six.next(seq_generator)
-
     return r
 
 def i4_bit_hi1(n):
@@ -219,7 +234,7 @@ def is_prime(n):
         p += 6
     return True
 
-def i4_sobol2(dim_num, seed=0, skip=1):
+def i4_sobol2(dim_num, generator_seed=0, skip=1):
     """ Sobol sequence generator.
 
     This is a modified version of i4_sobol from the sobol_seq package: see
@@ -252,10 +267,10 @@ def i4_sobol2(dim_num, seed=0, skip=1):
     Preprint IPM Akad. Nauk SSSR,
     Number 40, Moscow 1976.
     """
-    seed_save = -1
-    seed = int(np.floor(seed))
-    if seed < 0:
-        seed = 0
+    generator_seed_save = -1
+    generator_seed = int(np.floor(generator_seed))
+    if generator_seed < 0:
+        generator_seed = 0
 
     v = init_v() 
     #  Initialize the remaining rows of V.
@@ -303,26 +318,26 @@ def i4_sobol2(dim_num, seed=0, skip=1):
     keep_going = True
     while keep_going:
         l = 1
-        if seed == 0:
+        if generator_seed == 0:
             lastq = np.zeros(dim_num)
-        elif seed == seed_save + 1:
-            l = i4_bit_lo0(seed)
-        elif seed <= seed_save:
-            seed_save = 0
+        elif generator_seed == generator_seed_save + 1:
+            l = i4_bit_lo0(generator_seed)
+        elif generator_seed <= generator_seed_save:
+            generator_seed_save = 0
             lastq = np.zeros(dim_num)
-            for seed_temp in range(int(seed_save), int(seed)):
-                l = i4_bit_lo0(seed_temp)
+            for generator_seed_temp in range(int(generator_seed_save), int(generator_seed)):
+                l = i4_bit_lo0(generator_seed_temp)
                 for i in range(1, dim_num + 1):
                     lastq[i - 1] = np.bitwise_xor(
                         int(lastq[i - 1]), int(v[i - 1, l - 1]))
-            l = i4_bit_lo0(seed)
-        elif seed_save + 1 < seed:
-            for seed_temp in range(int(seed_save + 1), int(seed)):
-                l = i4_bit_lo0(seed_temp)
+            l = i4_bit_lo0(generator_seed)
+        elif generator_seed_save + 1 < generator_seed:
+            for generator_seed_temp in range(int(generator_seed_save + 1), int(generator_seed)):
+                l = i4_bit_lo0(generator_seed_temp)
                 for i in range(1, dim_num + 1):
                     lastq[i - 1] = np.bitwise_xor(int(lastq[i - 1]),
                                                   int(v[i - 1, l - 1]))
-            l = i4_bit_lo0(seed)
+            l = i4_bit_lo0(generator_seed)
         if MAXCOL < l:
             keep_going = False
         quasi = np.zeros(dim_num)
@@ -330,7 +345,7 @@ def i4_sobol2(dim_num, seed=0, skip=1):
             quasi[i - 1] = lastq[i - 1] * recipd
             lastq[i - 1] = np.bitwise_xor(int(lastq[i - 1]), int(v[i - 1, l - 1]))
         
-        # overwite seed_save with current seed 
-        seed_save = seed
+        # overwite generator_seed_save with current generator_seed 
+        generator_seed_save = generator_seed
         yield quasi
-        seed += (1 + skip)
+        generator_seed += (1 + skip)
