@@ -245,7 +245,6 @@ class Emulator:
         means : ndarray
             (n,m) array of means, corresponding to the mean at each of the n
             points in xstar for each of the m hyperparameter samples
-
         variances : ndarray
             (n,m) array of variances, corresponding to the variance at each of
             the n points in xstar for each of the m hyperparameter samples
@@ -267,7 +266,6 @@ class Emulator:
         means : ndarray
             (n,m) array of means, corresponding to the mean at each of the n
             points in xstar for each of the m hyperparameter samples
-
         covariance_matrices : ndarray
             (n,n,m) array consisting of m covariances matrices of size (n,n),
             describing the joint distribution over the n points in xstar for
@@ -343,7 +341,6 @@ class Emulator:
         xstar : ndarray
             (n,d) array of points at which the upper confidence bound function
             should be evaluated
-
         beta : float
              Parameter beta for the upper confidence bound acquisition function
 
