@@ -26,7 +26,7 @@ _METHODS = {
 }
 
 def show_methods():
-    print(set(_METHODS.keys()))
+    return (set(_METHODS.keys()))
 
 def sample_hypercube(n, d, method, seed=None, options=None):
     """ Unified interface to obtaining uniform random variables on [0,1]^d.

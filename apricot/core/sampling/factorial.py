@@ -34,7 +34,7 @@ def factorial(n, d, seed=None):
         logger.info('Next largest factorial sample size in {0} dimensions is {1}.'.format(d, next_largest))
         logger.warning('Factorial dimension rounded down to {0}. Sample size is {1}.'.format(n_valid, n_valid**d))
     else:
-        nprime += 1
+        n_valid += 1
     vecs = (nplinspace(0, 1, n_valid) for _ in range(d))
     return cartesian(*vecs)
 

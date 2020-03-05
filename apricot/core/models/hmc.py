@@ -5,45 +5,48 @@ from apricot.core.utils import random_seed
 def run_hmc(interface, x, y, jitter=1e-10, fit_options=None, samples=2000,
             thin=1, chains=4, adapt_delta=0.8, max_treedepth=10, seed=None,
             permute=True, init_method='stable'):
-    """ Run Stan's HMC algorithm for the provided model.
+    """Run Stan's HMC algorithm for the provided model
+
+    This is the model interface to Stan's implementation of the No-U-Turn
+    Sampler (NUTS) via pyStan.
 
     Parameters
     ----------
     interface : instance of models.Interface
-        Interface to the desired Stan model.
+        Interface to the desired Stan model
     x : ndarray
         (n,d) array with each row representing a sample point in d-dimensional
-        space.
+        space
     y : ndarray
-        (n,) array of responses corresponding to each row of x.
+        (n,) array of responses corresponding to each row of x
     jitter : float, optional
         Stability jitter. Default = 1e-10.
     fit_options : dict, optional
     samples : int, optional
         Number of samples to draw from the posterior (accounting for the number
-        of chains, warmup and thinning). Default = 2000.
+        of chains, warmup and thinning). Default = 2000
     thin : int
-        If > 1, keep only every thin samples. Default = 1.
+        If > 1, keep only every thin samples. Default = 1
     chains : int
-        The number of independent chains to draw samples from. Default = 4.
+        The number of independent chains to draw samples from. Default = 4
     adapt_delta : float < 1
-        Adapt_delta control parameter to the sampler. Default = 0.8.
+        Adapt_delta control parameter to the sampler. Default = 0.8
     max_treedepth : int
-        Maximum sample tree depth control parameter. Default = 10.
+        Maximum sample tree depth control parameter. Default = 10
     seed : {int32, None}
-        Random seed.
+        Random seed
     permute : bool, optional
-        If True, permute the samples.
+        If True, permute the samples
     init_method : {'stable', 0, 'random'}
         String determining the initialisation method for each chain. Default =
-        'stable'.
+        'stable'
 
     Returns
     -------
     samples : ndarray
-        Array of sampled hyperparameters.
+        Array of sampled hyperparameters
     info : dict
-        Sampling information.
+        Sampling information
     """
 
     if seed is None:
@@ -160,7 +163,7 @@ def _hmc_post_internal(result, permute=True, seed=None):
     return samples, info
 
 def _same_lengths(arrays):
-    """Check if all supplied arrays are the same shape in dimension 0."""
+    """Check if all supplied arrays are the same shape in dimension 0"""
     n = None
     for a in arrays:
         if n is None:
@@ -223,7 +226,6 @@ def _check_divergent(divergent):
 def _check_rhat(rhat):
     """Check rhat < 1.1"""
     passed = True
-    unmixed = []
     for r in rhat:
         if rhat[r] > 1.1:
             passed = False

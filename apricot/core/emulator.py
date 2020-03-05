@@ -2,6 +2,7 @@ import numpy as np
 from functools import wraps
 
 from apricot.core.gp import Gp
+from apricot.core.sampling import sample_hypercube
 from apricot.core.optimisation import optimise
 from apricot.core.utils import _force_f_array, _atleast2d_fview
 from apricot.core.exceptions import ShapeError, MissingParameter
@@ -33,6 +34,8 @@ def _format_input(xstar, d):
     ShapeError : if input array shape is not compatible with the model.
     """
     xstar = np.atleast_1d(xstar)
+
+    # one dimensional
     if xstar.ndim==1:
         if d==1:
             xstar_f = xstar.reshape(-1, 1, order='F')
@@ -40,16 +43,21 @@ def _format_input(xstar, d):
             xstar_f = xstar.reshape(1, -1, order='F')
         else:
             raise ShapeError('xstar', 'n', 1, xstar.shape)
+
+    # two dimensional
     elif xstar.ndim == 2:
         if xstar.shape[1] != d:
             raise ShapeError('xstar', 'n', d, xstar.shape)
         xstar_f = _force_f_array(xstar)
+
+    # > 2 dimensional
     else:
         xstar_s = xstar.squeeze()
         if xstar_s.ndim == 2:
             return _format_input(xstar_s, d)
         else:
             raise ShapeError('xstar', 'n', d, xstar.shape)
+
     return xstar_f
 
 def _defined_on_index(method):
@@ -58,6 +66,18 @@ def _defined_on_index(method):
     Applies _format_inputs to arrays passed to the wrapped method, ensuring
     arrays are correctly shaped and F-ordered before passing them to the
     internal GP.
+
+    Parameters
+    ----------
+    method : Emulator method
+        Method bound to an Emulator instance accepting an (n,d) array xstar
+        as its first argument.
+
+    Returns
+    -------
+    wrapped_method : Emulator method
+        Original method wrapped with _defined_on_index, such that inputs are
+        always correctly shaped.
     """
     @wraps(method)
     def wrapper(inst, xstar, *tail, **kwargs):
@@ -80,6 +100,13 @@ class Emulator:
         Number of observations
     d : int
         Dimension of observations
+    hyperparameters : dict
+        Dictionary of model hyperparameters
+    fit_info : dict
+        Dictionary of model fit information
+    fit_method : {'hmc', 'mle'}
+        String describing which method was used to identify the model
+        hyperparameters
     m : int
         Number of hyperparameter samples
 
@@ -112,21 +139,28 @@ class Emulator:
     entropy(xstar)
         Differential entropy of predictive distribution at xstar, integrated
         over hyperparamters.
-    optimise(mode='min', x0=None, grid=None, grid_size=None, grid_method='lhs',
-    grid_options=None)
+    optimise(mode='min', x0=None, grid=None, grid_size=None, grid_method='lhs', grid_options=None, seed=None)
         Numerical optimisation (min or max) of posterior expectation.
-    next_ei(x0=None, grid=None, grid_size=None, grid_method='lhs',
-    grid_options=None)
+    next_ei(x0=None, grid=None, grid_size=None, grid_method='lhs', grid_options=None, seed=None)
         Numerical optimisation of expected improvement.
-    next_px(x0=None, grid=None, grid_size=None, grid_method='lhs',
-    grid_options=None)
+    next_px(x0=None, grid=None, grid_size=None, grid_method='lhs', grid_options=None, seed=None)
         Numerical optimisation of posterior predictive variance.
-    next_ucb(beta, x0=None, grid=None, grid_size=None, grid_method='lhs',
-    grid_options=None)
+    next_ucb(beta, x0=None, grid=None, grid_size=None, grid_method='lhs', grid_options=None, seed=None)
         Numerical optimisation of upper confidence bound.
+    sobol1(n=1000, method='sobol', seed=None)
+        First order Sobol indices
+    plot_parameter(parameter)
+        Trace plot of hyperparameter with name parameter.
+    plot_divergences()
+        Parallel co-ordinates plot of model hyperparameters. Highlights any
+        divergent sampler transitions.
 
     Private Attributes
     ------------------
+    _x : ndarray
+        (n,d) array of n sample points in d dimensional space
+    _y : ndarray
+        (n,) array of n sample responses, corresponding to the rows in _x
     _gp :
         (Internal) c++ GP object.
     """
@@ -149,6 +183,11 @@ class Emulator:
             the square root if designating a variance. Default = 1e-10.
         """
 
+        # TODO:
+        # info should be optional (e.g., if user supplied hyperparameters)
+        # check kernel and mean function assignment
+        # check noise assignment
+
         self._x = _force_f_array(x)
         self._y = _force_f_array(y)
 
@@ -159,7 +198,7 @@ class Emulator:
         # ---------------------------------------------------------------------
         # Temporary fix for more flexible parametrisation. Note internal GP
         # wants squared hyperparameters. Once more kernels are added we need
-        # to check what the internal GP expects.
+        # to check which hyperparameters the internal GP expects.
         try:
             self._amp_sq = hyperparameters['amp']**2
             self._ls_sq = hyperparameters['ls']**2
@@ -194,7 +233,10 @@ class Emulator:
 
     @_defined_on_index
     def __call__(self, xstar):
-        """Posterior Expectation
+        """Posterior expectation
+
+        The posterior expectation of the emulator, integrated over the model
+        hyperparameters.
 
         Parameters
         ----------
@@ -213,7 +255,10 @@ class Emulator:
         return self._gp.E(xstar)
 
     def expectation(self, xstar):
-        """Posterior Expectation
+        """Posterior expectation
+
+        The posterior expectation of the emulator, integrated over the model
+        hyperparameters.
 
         Parameters
         ----------
@@ -233,7 +278,10 @@ class Emulator:
 
     @_defined_on_index
     def marginals(self, xstar):
-        """"Predictive Marginals
+        """"Predictive marginals
+
+        Marginal predictive distributions corresponding to each hyperparameter
+        sample at the points described by xstar.
 
         Parameters
         ----------
@@ -255,11 +303,14 @@ class Emulator:
     def posterior(self, xstar):
         """Predictive distribution
 
+        The joint predictive distribution of the model corresponding to each
+        hyperparameter sample at the points described by xstar.
+
         Parameters
         ----------
         xstar : ndarray
-            (n,d) array of points at which the joint predictive distribution
-            is sought
+            (n,d) array of points at which to compute the joint predictive
+            distribution
 
         Returns
         -------
@@ -277,7 +328,7 @@ class Emulator:
         """Leave-One-Out Cross Validation Scores
 
         Returns the analytical log predictive densities at each of the training
-        samples using the method of Sundararajan & Keerthi _[1].
+        samples using the method of Sundararajan & Keerthi [1]_.
 
         Returns
         -------
@@ -285,15 +336,26 @@ class Emulator:
 
         References
         ----------
-        [1] Sundararajan, S. and Keerthi, S.S., 2000.
-        Predictive approaches for choosing hyperparameters in Gaussian processes.
-        In Advances in neural information processing systems (pp. 631-637).
+        [1] Sundararajan, S. and Keerthi, S.S., 2000. Predictive approaches for
+        choosing hyperparameters in Gaussian processes. In Advances in neural
+        information processing systems (pp. 631-637).
+
+        Notes
+        -----
+        The method only delivers valid results for zero-mean Emulators.
         """
         return self._gp.loo_cv()
 
     @_defined_on_index
     def ei(self, xstar):
-        """Expected Improvement Acquisition Function
+        """Expected improvement acquisition function
+
+        The (negative) Expected Improvement (EI) acquisition function of
+        Mockus [1]_, integrated over the model hyperparameters.
+
+        This implementation is negative both in the sense that it seeks an
+        improvement in the *minimum* value of the target function *and* that
+        the acquisition function itself is to be minimised.
 
         Parameters
         ----------
@@ -307,12 +369,29 @@ class Emulator:
             (n,) array containing the expected improvement at each of the n
             points in xstar, integrated over the hyperparameter samples
 
+        See Also
+        --------
+        next_ei
+
+        References
+        ----------
+        [1] Mockus, J., Tiesis, V. and Zilinskas, A., 1978. The application of
+        bayesian methods for seeking the extremum. vol. 2.
+
         """
         return self._gp.ei(xstar)
 
     @_defined_on_index
     def px(self, xstar):
-        """Pure Exploration Acquisition Function
+        """Pure exploration acquisition function
+
+        The Pure eXploration (PX) acquisition function is equivalent to
+        the (negative) predictive marginal variance integrated over the model
+        hyperparameters.
+
+        This implementation of PX is negative, and the point of maximum
+        posterior marginal variance lies at the point in the index which
+        minimises the PX function.
 
         Parameters
         ----------
@@ -326,15 +405,22 @@ class Emulator:
             (n,) array containing the negative predictive variance at each of
             the n points in xstar, integrated over the hyperparameter samples
 
-        Notes
-        -----
-        Equivalent to the expectation of the negative marginal variance
+        See Also
+        --------
+        next_px
         """
         return self._gp.px(xstar)
 
     @_defined_on_index
     def ucb(self, xstar, beta):
-        """Upper Confidence Bound Acquisition Function
+        """Upper confidence bound acquisition function
+
+        The Upper Confidence Bound (UCB) acquisition function of
+        Srinivas et. al. [1]_, integrated over the model hyperparameters.
+
+        This implementation is negative both in the sense that it seeks an
+        improvement in the *minimum* value of the target function *and* that
+        the acquisition function itself is to be **minimised**.
 
         Parameters
         ----------
@@ -353,19 +439,32 @@ class Emulator:
         Notes
         -----
         Strictly speaking this is a "lower confidence bound" acquisition
-        function, as the acquisition function seeks the minimum
+        function, since the acquisition function seeks the minimum.
+
+        See Also
+        --------
+        next_ucb
+
+        References
+        ----------
+        [1] Srinivas, N., Krause, A., Kakade, S.M. and Seeger, M., 2009.
+        Gaussian process optimization in the bandit setting: No regret and
+        experimental design. arXiv preprint arXiv:0912.3995.
         """
         return self._gp.ucb(xstar, beta)
 
     @_defined_on_index
     def entropy(self, xstar):
-        """Differential Entropy
+        """Differential entropy
+
+        Compute the differential entropy of the posterior (joint) distribution
+        at the points described by xstar.
 
         Parameters
         ----------
         xstar : ndarray
-            (n,d) array of points for which the differential entropy of the
-            posterior should be evaluated
+            (n,d) array of points at which the differential entropy of the
+            posterior distribution should be evaluated
 
         Returns
         -------
@@ -440,7 +539,7 @@ class Emulator:
         """ Get next point using expected improvement
 
         Use numerical optimisation to estimate the global minimum of the
-        (negative) expected improvement (EI) acquisition function, hence
+        (negative) Expected Improvement (EI) acquisition function [1]_, hence
         determining the point in the index with the highest EI.
 
         Parameters
@@ -471,6 +570,11 @@ class Emulator:
         See Also
         --------
         ei
+
+        References
+        ----------
+        [1] Mockus, J., Tiesis, V. and Zilinskas, A., 1978. The application of
+        bayesian methods for seeking the extremum. vol. 2.
         """
 
         f = self._gp.ei
@@ -490,7 +594,7 @@ class Emulator:
         """ Get next point using the pure exploration acquisition function
 
         Use numerical optimisation to estimate the global minimum of the
-        (negative) predictive variance (pure exploration; PX) acquisition
+        (negative) predictive variance (Pure eXploration; PX) acquisition
         function, hence determining the point in the index with the highest
         PX.
 
@@ -541,7 +645,7 @@ class Emulator:
         """ Get next point using the upper confidence bound acquisition function
 
         Use numerical optimisation to estimate the global minimum of the
-        (negative) upper confidence bound (UCB) acquisition function,
+        (negative) Upper Confidence Bound (UCB) acquisition function [1]_,
         hence determining the point in the index with the highest UCB.
 
         Parameters
@@ -574,6 +678,12 @@ class Emulator:
         See Also
         --------
         ucb
+
+        References
+        ----------
+        [1] Srinivas, N., Krause, A., Kakade, S.M. and Seeger, M., 2009.
+        Gaussian process optimization in the bandit setting: No regret and
+        experimental design. arXiv preprint arXiv:0912.3995.
         """
 
         # partially apply beta to get objective function and derivatives
@@ -593,7 +703,7 @@ class Emulator:
         """ Calculate first order Sobol indices for the emulator.
 
         Approximates first order Sobol indices for the emulator using Monte-Carlo
-        simulation as described in _[1].
+        simulation as described in [1]_.
 
         Parameters
         ----------
@@ -614,7 +724,7 @@ class Emulator:
         """
 
         # generate the sample points and split into arrays A and B
-        X = apricot.sample_hypercube(n, 2*self.d, method=method, seed=seed)
+        X = sample_hypercube(n, 2*self.d, method=method, seed=seed)
         A = X[:,:self.d]
         B = X[:,self.d:]
 
