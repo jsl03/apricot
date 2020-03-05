@@ -71,7 +71,8 @@ This package makes use of one or more pieces of code from the following authors:
 
 * apricot's `setup.py` features code directly from [pybind/python\_example](https://github.com/pybind/python_example).
 
-* The `sobol` submodule uses code derived from [naught101/sobol\_seq](https://github.com/naught101/sobol_seq).
+* The `sobol` submodule uses code derived from [naught101/sobol\_seq](https://github.com/naught101/sobol_seq), in turn
+derived from [Sobol](https://people.sc.fsu.edu/~jburkardt/py_src/sobol/sobol.html) by John Burkardt and Corrado Chisari.
 
 * The lengthscale parameter prior distributions used inside the `priors` module closely follow considerations outlined by [Michael Betancourt](https://betanalpha.github.io/) in his three-part series ([part 1](https://betanalpha.github.io/assets/case_studies/gp_part1/part1.html), [part 2](https://betanalpha.github.io/assets/case_studies/gp_part2/part2.html), [part 3](https://betanalpha.github.io/assets/case_studies/gp_part3/part3.html)) on robust GP regression.
 
