@@ -108,6 +108,10 @@ setup(
     install_requires=['pybind11>=2.2','pystan','numpy'],
     include_package_data = True,
     cmdclass={'build_ext': BuildExt},
-    headers= ['apricot/src/kernels.h'],
+    headers= [
+        'apricot/src/kernels.h',
+        'apricot/src/vanilla_expq.h',
+        'apricot/src/vanilla_matern52.h',
+    ],
     zip_safe=False,
 )

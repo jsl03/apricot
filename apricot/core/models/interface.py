@@ -45,7 +45,7 @@ class Interface(object):
 
         """
 
-        self.kernel_type = parse_kernel(kernel)
+        self.kernel_type = parse_kernel(kernel) 
         self.mean_function_type = parse_mean(mean_function)
         self.noise_type = parse_noise(noise)
         self.warping = parse_warping(warping)
@@ -68,6 +68,7 @@ class Interface(object):
         self.xi = [a[0] for a in noise_part.args]
 
         # dimensions of the required arguments
+        # TODO: attributes probably redundant as of 01.01.2020
         self._theta_dims = [a[1] for a in kernel_part.args]
         self._beta_dims = [a[1] for a in mean_part.args]
         self._xi_dims = [a[1] for a in noise_part.args]

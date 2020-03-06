@@ -65,9 +65,7 @@ def optimise(f, f_jac, d, x0=None, grid=None, grid_size=None, grid_method='lhs',
         }
     else:
         ret = {
-            'xprime' : result['x'],
-            'val' : result['fun'],
-            'raw' : result['raw'],
+            'raw' : result,
         }
 
     return ret

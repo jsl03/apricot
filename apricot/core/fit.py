@@ -19,6 +19,7 @@ def fit(x, y, kernel='expq', mean=None, noise=None, method='hmc', **kwargs):
     kernel : {'expq'}
         String describing the desired kernel type:
         * 'expq' Exponentiated quadratic ("squared exponential").
+        * 'm52' Matern kernel with smoothness parameter nu=5/2
     mean : {None}
         String describing the desired mean function.
         * {None, 'zero', 0} Zero mean function
@@ -129,9 +130,15 @@ def _fit_hmc(interface, x, y, jitter=1e-10, fit_options=None, samples=4000,
     }
     samples, info = interface.hmc(x, y, **opts)
     hyperparameters = glue.hmc_glue(interface, samples, info)
-    return Emulator(x, y, hyperparameters, info, jitter=jitter)
+    E = Emulator(x, y, hyperparameters,
+                 info=info,
+                 kernel_type = interface.kernel_type,
+                 mean_function_type = interface.mean_function_type,
+                 jitter = jitter
+    )
+    return E
 
-def _fit_mle(interface, x, y):
+def _fit_mle(interface, x, y, jitter=1e-10):
     """ Optimise log likelihood of the hyperparameters for the provided model.
 
     Parameters
@@ -150,4 +157,10 @@ def _fit_mle(interface, x, y):
     """
     result, info = interface.mle(x, y)
     hyperparameters = glue.mle_glue(interface, result, info)
-    return Emulator(x, y, hyperparameters, info)
+    E = Emulator(x, y, hyperparameters,
+                 info = info,
+                 kernel_type = interface.kernel_type,
+                 mean_function_type = interface.mean_function_type,
+                 jitter = jitter
+    )
+    return E

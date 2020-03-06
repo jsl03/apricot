@@ -80,8 +80,9 @@ def run_hmc(interface, x, y, jitter=1e-10, fit_options=None, samples=2000,
 
     samples, info = _hmc_post_internal(result, permute=permute, seed=seed)
 
-    # store the seed
+    # store the seed and inits for debug purposes
     info['seed'] = seed
+    info['inits'] = inits
 
     # run the checks
     info['passed_rhat'] = _check_rhat(info['rhat'])

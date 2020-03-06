@@ -76,6 +76,7 @@ def run_mle(interface, x, y, jitter=1e-10, fit_options=None, init_method='random
     info = {
         'method' : 'mle',
         'algorithm' : algorithm,
+        'theta_init' : init,
         'max_iter' : max_iter,
         'restarts' : restarts,
         'lp': result['value']
@@ -96,5 +97,5 @@ def _mle_internal(interface, opts, restarts):
             # TODO save these to pass through info dictionary
             pass
         if result is None:
-            raise RuntimeError(rte)
+            raise RuntimeError(rte) from None
     return result

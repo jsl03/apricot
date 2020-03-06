@@ -220,28 +220,44 @@ Eigen::RowVectorXd cov_1d_m52(
     Eigen::Ref<const Eigen::VectorXd> rho)
 {
     Eigen::RowVectorXd c(x.rows());
+    double acc;
     double r;
-    double r_sqr;
-    double sr5 = sqrt(5);
-    double rat = 5/3;
+    double sr5 = sqrt(5.0);
+    double rat = 5.0 / 3.0;
     for(int i = 0; i < x.rows(); i++){
-        r = 0;
+        acc = 0;
         for(int d = 0; d < x.cols(); d++){
-            r += pow(xstar1d(d) - x(i,d), 2.0) / rho(d);
+            acc += pow(xstar1d(d) - x(i,d), 2.0) / rho(d);
         }
-        r_sqr = sqrt(r);
-        c(i) = alpha * (1 + sr5 * r_sqr + rat * r) * exp(-0.5 * r_sqr);
+        r = sqrt(acc);
+        c(i) = alpha * (1 + sr5 * r + rat*acc) * exp(-sr5*r);
     }
     return c;
 }
 
 Eigen::RowVectorXd cross_cov_grad_m52(
-                                     Eigen::Ref<const Eigen::RowVectorXd> xstar,
+                                     Eigen::Ref<const Eigen::RowVectorXd> xstar1d,
                                      Eigen::Ref<const Eigen::MatrixXd> x,
                                      int d,
-                                     double asq,
-                                     Eigen::Ref<const Eigen::VectorXd> lsq,
-                                     Eigen::Ref<const Eigen::MatrixXd> kxstarx)
+                                     double alpha,
+                                     Eigen::Ref<const Eigen::VectorXd> rho)
 {
-  return ((xstar(d) - x.col(d).array()) / lsq(d)).transpose().array() * kxstarx.array();
+    Eigen::RowVectorXd dc(x.rows());
+    double r;
+    double sr5 = sqrt(5);
+    double tmp_1;
+    double tmp_2;
+    double rat_10_3 = 10.0 /3.0;
+    double rat_5_3 = 5.0 / 3.0;
+
+    for(int i = 0; i < x.rows(); i++){
+      r = 0;
+      for(int d_internal = 0; d_internal < x.cols(); d_internal++){
+        r += pow(xstar1d(d_internal) - x(i,d_internal), 2.0) / rho(d_internal);
+      }
+      tmp_1 = sqrt(r) * sr5;
+      tmp_2 = alpha * (rat_10_3 - 5.0 - rat_5_3 * tmp_1) * exp(-tmp_1);
+      dc(i) = -((xstar1d(d) - x(i,d)) / rho(d)) * tmp_2;
+    }
+    return dc;
 }

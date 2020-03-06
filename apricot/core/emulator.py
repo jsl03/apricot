@@ -1,7 +1,9 @@
 import numpy as np
 from functools import wraps
 
-from apricot.core.gp import Gp
+# rename this module as internal GP
+from apricot.core.gp import VanillaExpq, VanillaM52
+
 from apricot.core.sampling import sample_hypercube
 from apricot.core.optimisation import optimise
 from apricot.core.utils import _force_f_array, _atleast2d_fview
@@ -85,6 +87,15 @@ def _defined_on_index(method):
         return method(inst, xstar_f, *tail, **kwargs)
     return wrapper
 
+
+# TODO: make kernel naming consistent with internal (use core.models.parse)
+def _assign_internal(kernel_type):
+    _AVAILABLE = {
+        'expq':VanillaExpq,
+        'matern52':VanillaM52,
+    }   
+    return _AVAILABLE[kernel_type]
+
 class Emulator:
     """ Gaussian Process Emulator
 
@@ -102,11 +113,12 @@ class Emulator:
         Dimension of observations
     hyperparameters : dict
         Dictionary of model hyperparameters
-    fit_info : dict
-        Dictionary of model fit information
-    fit_method : {'hmc', 'mle'}
-        String describing which method was used to identify the model
-        hyperparameters
+    kernel_type : {'expq', 'matern52'}, optional 
+        String designating the kernel type. Default = 'expq'
+    mean_function_type : {'zero', None}, optional
+        String designating the mean function type. Default = 'zero'
+    info : dict
+        Dictionary of diagnostic fit information
     m : int
         Number of hyperparameter samples
 
@@ -165,7 +177,7 @@ class Emulator:
         (Internal) c++ GP object.
     """
 
-    def __init__(self, x, y, hyperparameters, info, jitter=1e-10, kernel=None, mean_function=None):
+    def __init__(self, x, y, hyperparameters, info=None, kernel_type='expq', mean_function_type='zero', jitter=1e-10):
         """ GP emulator
 
         Parameters
@@ -176,27 +188,26 @@ class Emulator:
             (n,) array of function responses.
         hyperparameters : dict
             Dictionary containing kernel hyperparameters.
-        info : dict
+        info : dict, optional
             Dictionary containing model fit information.
+        kernel_type : {'expq', 'matern52'}, optional 
+            String designating the kernel type. Default = 'expq'
+        mean_function_type : {'zero', None}, optional
+            String designating the mean function type. Default = 'zero'
         jitter : float, optional
             Magnitude of stability jitter. This is a standard deviation: supply
             the square root if designating a variance. Default = 1e-10.
         """
 
-        # TODO:
-        # info should be optional (e.g., if user supplied hyperparameters)
-        # check kernel and mean function assignment
-        # check noise assignment
-
         self._x = _force_f_array(x)
         self._y = _force_f_array(y)
 
+        self.kernel_type = kernel_type
+        self.mean_type = mean_function_type
         self.hyperparameters = hyperparameters
-        self.fit_info = info
-        self.fit_method = info['method']
-
+        
         # ---------------------------------------------------------------------
-        # Temporary fix for more flexible parametrisation. Note internal GP
+        # Dict fixes more flexible parametrisation. Note internal GP
         # wants squared hyperparameters. Once more kernels are added we need
         # to check which hyperparameters the internal GP expects.
         try:
@@ -206,12 +217,12 @@ class Emulator:
             
         except KeyError as ke:
             raise MissingParameter(str(ke)) from None
-        # ---------------------------------------------------------------------
 
         # stability jitter
         self._delta = jitter**2
-
-        self._gp = Gp(
+        # ---------------------------------------------------------------------
+        internal = _assign_internal(self.kernel_type)
+        self._gp = internal(
             self._x,
             self._y,
             self._amp_sq,
@@ -219,9 +230,17 @@ class Emulator:
             self._sigma0,
             self._delta,
         )
-
         self.n, self.d = x.shape
         self.m = self._amp_sq.shape[0]
+        # -----------------------------------------------------------------------
+        if info is None:
+            info = {}
+            # guess the fit method from m if not explicitly provided
+            if self.m > 1:
+                info['method'] = 'hmc'
+            else:
+                info['method'] = 'mle'
+        self.info = info
 
     @property
     def x(self):
@@ -762,7 +781,7 @@ class Emulator:
 
     def plot_parameter(self, param_name):
         """ Traceplot of hyperparameter with param_name"""
-        if self.fit_method == hmc:
+        if self.info['method'] == hmc:
             _plot_parameter(self.hyperparameters, param_name, self.fit_info)
         else:
             raise RuntimeError('method is only valid for models fit using HMC.')
@@ -772,7 +791,7 @@ class Emulator:
 
         Highlights any divergent transitions.
         """
-        if self.fit_method == hmc:
+        if self.info['method'] == hmc:
             _plot_divergences(self.hyperparameters, self.fit_info)
         else:
             raise RuntimeError('method is only valid for models fit using HMC.')
