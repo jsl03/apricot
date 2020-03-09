@@ -16,8 +16,8 @@ x_dot_beta = 'mu = X_matrix * beta;'
 
 mu_to_zeros = 'mu = rep_vector(0,n);'
 
-L_cov_expq_xi = '\n'.join([
-    'matrix L_cov_expq_xi(vector[] x, real amp, vector ls, real xi, real jitter, int n) {',
+L_cov_eq_xi = '\n'.join([
+    'matrix L_cov_eq_xi(vector[] x, real amp, vector ls, real xi, real jitter, int n) {',
     '  matrix[n, n] C;',
     '  real tmp;',
     '  real amp_sq = square(amp);',

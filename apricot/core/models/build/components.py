@@ -91,14 +91,14 @@ class StanModelPart:
         # code blocks, for example:
         # >>> for block in model_component:
         # >>>     <build the model>
-        blockGen = (c for c in (
+        block_gen = (c for c in (
             self.functions,
             self.data,
             self.transdata,
             self.params,
             self.transparams,
             self.model))
-        return blockGen
+        return block_gen
 
 class StanModelKernel(StanModelPart):
 
@@ -137,7 +137,7 @@ class StanModelNoise(StanModelPart):
     def filename_component(self):
         return filenames.noise_part_filename(self._name)
 
-def _none_to_list(x):
+def _none_to_list(x : typing.Any):
     """ If x is None, turn it into an empty list. """
     if x is None:
         return []

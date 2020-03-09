@@ -1,19 +1,22 @@
+import typing
 import copy
+
+from apricot.core import exceptions
 from apricot.core.models.build.components import StanModelKernel
 from apricot.core.models.build.code_snippets import (
-    L_cov_expq_xi,
+    L_cov_eq_xi,
     L_cov_m52_xi,
     L_cov_m32_xi,
     L_cov_rq_xi,
     input_warping
 )
-from apricot.core.exceptions import _raise_NotImplemented
+
 
 def find_kernel(name, warping):
     try:
         kernel_options = AVAILABLE[name]
     except KeyError:
-        _raise_NotImplemented('kernel', name, AVAILABLE)
+        exceptions._raise_NotImplemented('kernel', name, AVAILABLE)
     if warping:
         return _apply_warping(kernel_options)
     else:
@@ -52,26 +55,26 @@ GP_DATA_PRIORS_GENERIC = [
     'ls_beta',
 ]
 
-kernel_expq = {
-    'name' : 'expq',
-    'functions' : L_cov_expq_xi,
+kernel_eq = {
+    'name' : 'eq',
+    'functions' : L_cov_eq_xi,
     'data' : GP_DATA_GENERIC, 
     'transformed_data' : None,
     'parameters' : GP_PARAMETERS_GENERIC,
-    'kernel_signature' : 'L_cov_expq_xi(__x__, amp, ls, xi, jitter, n)',
+    'kernel_signature' : 'L_cov_eq_xi(__x__, amp, ls, xi, jitter, n)',
     'model' : GP_MODEL_GENERIC,
     'args' : GP_ARGS_GENERIC,
     'to_sample' : ['amp', 'ls'],
     'data_priors' : GP_DATA_PRIORS_GENERIC,
 }
 
-kernel_expq_flat = {
-    'name' : 'expq_flat',
-    'functions' : L_cov_expq_xi,
+kernel_eq_flat = {
+    'name' : 'eq_flat',
+    'functions' : L_cov_eq_xi,
     'data' : [],
     'transformed_data' : None,
     'parameters' : GP_PARAMETERS_GENERIC,
-    'kernel_signature' : 'L_cov_expq_xi(__x__, amp, ls, xi, jitter, n)',
+    'kernel_signature' : 'L_cov_eq_xi(__x__, amp, ls, xi, jitter, n)',
     'model' : [],
     'args' : GP_ARGS_GENERIC,
     'to_sample' : ['amp', 'ls'],
@@ -79,7 +82,7 @@ kernel_expq_flat = {
 }
 
 kernel_m52 = {
-    'name' : 'matern52',
+    'name' : 'm52',
     'functions' : L_cov_m52_xi,
     'data' : GP_DATA_GENERIC,
     'transformed_data' : None,
@@ -92,7 +95,7 @@ kernel_m52 = {
 }
 
 kernel_m32 = {
-    'name' : 'matern32',
+    'name' : 'm32',
     'functions' : L_cov_m32_xi,
     'data' : GP_DATA_GENERIC,
     'transformed_data' : None,
@@ -176,9 +179,9 @@ def _default_sig(sig):
     return sig.replace('__x__', 'x')
 
 AVAILABLE = {
-    'expq' : kernel_expq,
-    'expq_flat' : kernel_expq_flat,
-    'matern52' : kernel_m52,
-    'matern32' : kernel_m32,
+    'eq' : kernel_eq,
+    'eq_flat' : kernel_eq_flat,
+    'm52' : kernel_m52,
+    'm32' : kernel_m32,
     'rq' : kernel_rq,
 }
