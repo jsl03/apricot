@@ -1,13 +1,14 @@
-from numpy import (
-    array as nparray,
-    meshgrid as npmeshgrid,
-    linspace as nplinspace,
-)
+import typing
+import numpy as np
 
 from apricot.core.logger import get_logger
 logger = get_logger()
 
-def factorial(n, d, seed=None):
+def factorial(
+        n : int,
+        d : int,
+        seed : typing.Optional[int] = None,
+):
     """ Factorial sample design
 
     Factorial will round down the requested number of samples to the nearest
@@ -35,15 +36,16 @@ def factorial(n, d, seed=None):
         logger.warning('Factorial dimension rounded down to {0}. Sample size is {1}.'.format(n_valid, n_valid**d))
     else:
         n_valid += 1
-    vecs = (nplinspace(0, 1, n_valid) for _ in range(d))
+    vecs = (np.linspace(0, 1, n_valid) for _ in range(d))
     return cartesian(*vecs)
 
-def cartesian(*args):
-    """Cartesian product of a list of arrays"""
+def cartesian(*args : np.ndarray):
+    """Cartesian product of a sequence of arrays"""
     d = len(args)
-    return nparray(npmeshgrid(*args)).T.reshape(-1,d, order='C')
+    return np.array(np.meshgrid(*args)).T.reshape(-1, d, order='C')
 
-def _power_d_less_n(n, d):
+def _power_d_less_n(n : int, d : int):
+    """ find a such that d**a < n"""
     a = 1
     while True:
         if a ** d < n:

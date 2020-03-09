@@ -1,16 +1,32 @@
+import typing
 import numpy as np
 
-from apricot.core.sampling.sobol import sobol, sobol_scatter
-from apricot.core.sampling.lhs import(
-    lhs,
-    optimised_lhs,
-    mdurs
-)
-from apricot.core.sampling.factorial import factorial
-from apricot.core.utils import _force_f_array, set_seed
+from apricot.core.sampling.sobol import sobol
+from apricot.core.sampling.sobol import sobol_scatter
+from apricot.core.sampling.lhs import lhs
+from apricot.core.sampling.lhs import optimised_lhs
+from apricot.core.sampling.lhs import mdurs
 
-def urandom(n, d, seed=None):
-    """Uniform random sample"""
+from apricot.core.sampling.factorial import factorial
+from apricot.core.utils import _force_f_array
+from apricot.core.utils import set_seed
+
+def urandom(n : int, d : int, seed : typing.Optional[int] = None):
+    """ Uniform random sample.
+
+    Parameters
+    ----------
+    n : int
+        Number of random vectors to draw.
+    d : int
+        Dimension of the random vectors.
+
+    Returns
+    -------
+    urvs : ndarray
+        (n, d) array of n random d-dimensional vectors drawn uniformly at
+        random.
+    """
     set_seed(seed)
     return np.random.random((n, d))
 
@@ -28,10 +44,16 @@ _METHODS = {
 def show_methods():
     return (set(_METHODS.keys()))
 
-def sample_hypercube(n, d, method, seed=None, options=None):
+def sample_hypercube(
+        n : int,
+        d : int,
+        method : str,
+        seed : typing.Optional[int] = None,
+        options : typing.Optional[dict] = None,
+):
     """ Unified interface to obtaining uniform random variables on [0,1]^d.
 
-    Generate n sets of d-dimensional points using the method 'method'.
+    Generate n d-dimensional vectors using the method 'method'.
 
     Parameters
     ----------
@@ -67,10 +89,12 @@ def sample_hypercube(n, d, method, seed=None, options=None):
             number of samples, d is the number of dimensions and a is the
             returned number of samples. Future versions should allow variable
             numbers of points in each input dimension.
-    seed : {None, int32}
-        Random seed. Ignored if the algorithm is not randomised.
-    options : dict
+    seed : {None, int32}, optional
+        Random seed. Ignored if the algorithm is not randomised. If None,
+        an arbitrary random seed will be used. Default = None.
+    options : {None, dict}, optional
         Dictionary of additional options to supply to the sampling algorithm.
+        Default = None.
 
     Returns
     -------

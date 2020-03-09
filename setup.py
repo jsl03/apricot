@@ -3,10 +3,10 @@ from setuptools.command.build_ext import build_ext
 import sys
 import setuptools
 
-__version__ = '0.8'
+__version__ = '0.9'
 
 class get_pybind_include(object):
-    """Helper class to determine the pybind11 include path.
+    """ Helper class to determine the pybind11 include path.
 
     The purpose of this class is to postpone importing pybind11
     until it is actually installed, so that the ``get_include()``
@@ -22,8 +22,8 @@ class get_pybind_include(object):
 
 ext_modules = [
     Extension(
-        'apricot.core.gp',
-        ['apricot/src/gp.cpp'],
+        'apricot.core.gp_internal',
+        ['apricot/src/gp_internal.cpp'],
         include_dirs=[
             get_pybind_include(),
             get_pybind_include(user=True),
@@ -109,9 +109,11 @@ setup(
     include_package_data = True,
     cmdclass={'build_ext': BuildExt},
     headers= [
-        'apricot/src/kernels.h',
-        'apricot/src/vanilla_expq.h',
-        'apricot/src/vanilla_matern52.h',
+        'apricot/src/misc.h',
+        'apricot/src/gp_eq_kernel.h',
+        'apricot/src/gp_m52_kernel.h',
+        'apricot/src/gp_m32_kernel.h',
+        'apricot/src/gp_rq_kernel.h',
     ],
     zip_safe=False,
 )

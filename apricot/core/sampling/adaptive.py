@@ -2,7 +2,12 @@ import numpy as np
 
 from apricot.core.sampling.hypercube import sample_hypercube
 
-def max_entropy(Emulator, n, pool=200, method='lhs'):
+def max_entropy(
+        emulator,
+        n : int,
+        pool : int = 200,
+        method : str = 'lhs',
+):
     """ Maximum Entropy LHS sample
 
     Given an Emulator instance, select from a candidate pool of LHS experimental
@@ -30,13 +35,13 @@ def max_entropy(Emulator, n, pool=200, method='lhs'):
     h0 : float
         Differential entropy of grid.
     """
-    d = Emulator.d
+    d = emulator.d
     h0 = -np.inf
     grid = None
     i = 0
     while i < pool:
         cand = sample_hypercube(n, d, 'lhs')
-        h = Emulator.entropy(cand)
+        h = emulator.entropy(cand)
         if h > h0:
             grid = cand
             h0 = h

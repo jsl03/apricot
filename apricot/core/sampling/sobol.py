@@ -16,14 +16,21 @@ PYTHON versions by Corrado Chisari
 Original code is available at http://people.sc.fsu.edu/~jburkardt/py_src/sobol/sobol.html
 """
 
-from __future__ import division
+from __future__ import division # deprecated; python2 compatibility not needed
+import typing
 import numpy as np
 import six
 from apricot.core.utils import set_seed
 
-def sobol_scatter(n, d, seed=None, generator_seed=1, skip=0):
-    """ Generate n length d quasi-random vectors using the Sobol sequence, with
-    additive uniform randomisation.
+def sobol_scatter(
+        n : int,
+        d : int,
+        seed : typing.Optional[int] = None,
+        generator_seed : int = 1,
+        skip : int =0,
+):
+    """ Generate n d-dimensional quasi-random vectors using the Sobol sequence,
+    with additive uniform randomisation.
 
     Implements i4sobol_generate from the sobol_seq package but without the
     ability to change the dimension of the sequence after it has been
@@ -36,7 +43,8 @@ def sobol_scatter(n, d, seed=None, generator_seed=1, skip=0):
     d : int
         The dimension of the random vectors
     seed : {None, int32}
-        Random seed for numpy. Default = None.
+        Seed for numpy's random state. If None, an arbitrary seed will be used.
+        Default = None.
     generator_seed : int
         Seed for the Sobol sequence generator. Default = 1.
     skip : int
@@ -79,7 +87,13 @@ def sobol_scatter(n, d, seed=None, generator_seed=1, skip=0):
         r[r<0] += 1
     return r
 
-def sobol(n, d, seed=None, generator_seed=1, skip=0):
+def sobol(
+        n : int,
+        d : int,
+        seed : typing.Optional[int] = None,
+        generator_seed : typing.Optional[int] = 1,
+        skip : int = 0,
+):
     """ Generate n length d quasi-random vectors from the Sobol sequence.
 
     Generate n length d quasi-random vectors using the Sobol sequence [1]_.
@@ -95,10 +109,9 @@ def sobol(n, d, seed=None, generator_seed=1, skip=0):
     d : int
         The dimension of the random vectors
     seed : {None, int32}
-        Random seed for numpy. Default = None. Note that this algorithm is
-        deterministic, so this keyword argument currently has no effect on this
-        function. For a Sobol sequence featuring randomisation, see
-        sobol_scatter.
+        Seed for numpy's random state. If None, an arbitrary seed will be used.
+        Note that this algorithm is deterministic, so seed has no effect.
+        Default = None.
     generator_seed : int
         Seed for the Sobol sequence generator. Default = 1
     skip : int
@@ -136,8 +149,8 @@ def sobol(n, d, seed=None, generator_seed=1, skip=0):
         r[j, :] = six.next(seq_generator)
     return r
 
-def i4_bit_hi1(n):
-    """Return the position of the high 1 bit base 2 in an integer. """
+def i4_bit_hi1(n : int):
+    """ Return the position of the high 1 bit base 2 in an integer. """
     i = np.floor(n)
     bit = 0
     while i > 0:
@@ -145,8 +158,8 @@ def i4_bit_hi1(n):
         i //= 2
     return bit
 
-def i4_bit_lo0(n):
-    """Return the position of the low 0 bit base 2 in an integer."""
+def i4_bit_lo0(n : int):
+    """ Return the position of the low 0 bit base 2 in an integer. """
     bit = 1
     i = np.floor(n)
     while i != 2 * (i // 2):
@@ -206,15 +219,15 @@ def init_v():
 
     return v
 
-def prime_ge(n):
-    """Return the smallest prime greater than or equal to N."""
+def prime_ge(n : int):
+    """ Return the smallest prime greater than or equal to n. """
     p = max(np.ceil(n), 2)
     while not is_prime(p):
         p += 1
     return p
 
-def is_prime(n):
-    """True if n is prime, else False.
+def is_prime(n : int):
+    """ True if n is prime, else False.
 
     Original version by Corrado Chisari.
     """
@@ -234,7 +247,11 @@ def is_prime(n):
         p += 6
     return True
 
-def i4_sobol2(dim_num, generator_seed=0, skip=1):
+def i4_sobol2(
+        dim_num : int,
+        generator_seed : int = 0,
+        skip : int = 1
+):
     """ Sobol sequence generator.
 
     This is a modified version of i4_sobol from the sobol_seq package: see

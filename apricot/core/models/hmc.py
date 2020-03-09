@@ -1,18 +1,31 @@
+import typing
 import numpy as np
-from collections import namedtuple
-from apricot.core.utils import random_seed
 
-def run_hmc(interface, x, y, jitter=1e-10, fit_options=None, samples=2000,
-            thin=1, chains=4, adapt_delta=0.8, max_treedepth=10, seed=None,
-            permute=True, init_method='stable'):
-    """Run Stan's HMC algorithm for the provided model
+from apricot.core import utils
+
+def run_hmc(
+        interface : 'apricot.core.models.interface.Interface',
+        x : np.ndarray,
+        y : np.ndarray,
+        jitter : float = 1e-10,
+        fit_options : typing.Optional[dict] = None,
+        samples : int = 2000,
+        thin : int = 1,
+        chains : int = 4,
+        adapt_delta : float = 0.8,
+        max_treedepth : int = 10,
+        seed : typing.Optional[int] = None,
+        permute : bool = True,
+        init_method : str = 'stable',
+):
+    """Run Stan's HMC algorithm for the provided model.
 
     This is the model interface to Stan's implementation of the No-U-Turn
     Sampler (NUTS) via pyStan.
 
     Parameters
     ----------
-    interface : instance of models.Interface
+    interface : instance of models.interface.Interface
         Interface to the desired Stan model
     x : ndarray
         (n,d) array with each row representing a sample point in d-dimensional
@@ -34,7 +47,8 @@ def run_hmc(interface, x, y, jitter=1e-10, fit_options=None, samples=2000,
     max_treedepth : int
         Maximum sample tree depth control parameter. Default = 10
     seed : {int32, None}
-        Random seed
+        Seed for numpy's random state. Also used to initialise pyStan.
+        Default = None
     permute : bool, optional
         If True, permute the samples
     init_method : {'stable', 0, 'random'}
@@ -50,7 +64,7 @@ def run_hmc(interface, x, y, jitter=1e-10, fit_options=None, samples=2000,
     """
 
     if seed is None:
-        seed = random_seed()
+        seed = utils.random_seed()
 
     # make the data dictionary
     data = interface.make_pystan_dict(x, y, jitter, fit_options, seed=seed)
@@ -95,7 +109,11 @@ def run_hmc(interface, x, y, jitter=1e-10, fit_options=None, samples=2000,
 
     return samples, info
 
-def _hmc_post_internal(result, permute=True, seed=None):
+def _hmc_post_internal(
+        result : dict,
+        permute : bool = True,
+        seed : typing.Optional[int] = None,
+):
 
     # retrieve the Rhat positions and number of output variables
     rhat_pos = result.summary()['summary_colnames'].index('Rhat')
@@ -163,7 +181,7 @@ def _hmc_post_internal(result, permute=True, seed=None):
     }
     return samples, info
 
-def _same_lengths(arrays):
+def _same_lengths(arrays : typing.List[np.ndarray]):
     """Check if all supplied arrays are the same shape in dimension 0"""
     n = None
     for a in arrays:
@@ -173,7 +191,10 @@ def _same_lengths(arrays):
             return False
     return True
 
-def _permute_aligned(arrays, seed = None):
+def _permute_aligned(
+        arrays : typing.List[np.ndarray],
+        seed : typing.Optional[int] =  None,
+):
     """ Permute arrays, retaining row alignment.
 
     Permute each array in arrays along axis 0 using the same
@@ -195,13 +216,13 @@ def _permute_aligned(arrays, seed = None):
     index = np.random.permutation(n)
     return (array[index] for array in arrays)
 
-def _calc_ebfmi(energy):
-    """Expected Bayesian Fraction of Missing Information."""
+def _calc_ebfmi(energy : np.ndarray):
+    """ Expected Bayesian Fraction of Missing Information. """
     tmp = np.sum((energy[1:] - energy[:-1])**2) / energy.shape[0]
     return tmp / np.var(energy)
 
-def _check_tree_saturation(excess_treedepth, max_treedepth):
-    """Check for incidences of tree depth saturation"""
+def _check_tree_saturation(excess_treedepth : np.ndarray, max_treedepth : int):
+    """ Check for incidences of tree depth saturation. """
     passed = True
     saturations = excess_treedepth[excess_treedepth == 0].shape[0]
     if saturations > 0:
@@ -209,15 +230,15 @@ def _check_tree_saturation(excess_treedepth, max_treedepth):
     return passed
 
 def _check_ebfmi(ebfmi):
-    """Check that ebfmi > 0.2"""
+    """ Check that ebfmi > 0.2. """
     passed = True
     for i,tmp in enumerate(ebfmi < 0.2):
         if tmp:
             passed = False
     return passed
 
-def _check_divergent(divergent):
-    """Check for divergences"""
+def _check_divergent(divergent : np.ndarray):
+    """ Check for divergences. """
     passed = True
     ndivergent = np.sum(divergent)
     if ndivergent > 0:
@@ -225,7 +246,7 @@ def _check_divergent(divergent):
     return passed
 
 def _check_rhat(rhat):
-    """Check rhat < 1.1"""
+    """ Check rhat < 1.1. """
     passed = True
     for r in rhat:
         if rhat[r] > 1.1:

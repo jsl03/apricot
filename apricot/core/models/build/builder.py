@@ -1,11 +1,56 @@
-from apricot.core.utils import join_strings
-from apricot.core.models.build.core_parts import _get_core
+import typing
+from apricot.core import utils
+from apricot.core.models.build import components
+from apricot.core.models.build import core_parts
 
-def assmeble_model_code(kernel_part, mean_part, noise_part):
-    core_part = _get_core()
+def assmeble_model_code(
+        kernel_part : components.StanModelKernel,
+        mean_part : components.StanModelMeanFunction,
+        noise_part : components.StanModelNoise,
+):
+    """ Assemble the pyStan model code.
+
+    Parameters
+    ----------
+    kernel_part : components.StanModelKernel
+        Kernel related options for the model.
+    mean_part : components.StanModelMeanFunction
+        Mean function related options for the model.
+    noise_part : components.StandModelNoise
+        Noise related options for the model.
+
+    Returns
+    -------
+    model_code : str
+        pyStan model code, as a string.
+    """
+    core_part = core_parts._get_core()
     return _fuse_code_blocks(core_part, kernel_part, mean_part, noise_part)
 
-def _fuse_code_blocks(core, kernel, mean, noise):
+def _fuse_code_blocks(
+        core : components.StanModelPart,
+        kernel : components.StanModelKernel,
+        mean : components.StanModelMeanFunction,
+        noise : components.StanModelNoise,
+):
+    """ Fuse the code blocks together.
+
+    Parameters
+    ----------
+    core_part : components.StanModelPart
+        Generic ('core') model components.
+    kernel_part : components.StanModelKernel
+        Kernel related options for the model.
+    mean_part : components.StanModelMeanFunction
+        Mean function related options for the model.
+    noise_part : components.StandModelNoise
+        Noise related options for the model.
+
+    Returns
+    -------
+    model_code : str
+        pyStan model code, as a string.
+    """
     names = (
         'functions',
         'data',
@@ -17,7 +62,7 @@ def _fuse_code_blocks(core, kernel, mean, noise):
     zipped = zip(core, kernel, mean, noise)
 
     # join the code in each block with newlines
-    model_code = [join_strings([c, k, m, n]) for c, k, m, n in zipped]
+    model_code = [utils.join_strings([c, k, m, n]) for c, k, m, n in zipped]
 
     # ugly way of appending spaces to each newline so the model code is easier
     # to read if printed to the console

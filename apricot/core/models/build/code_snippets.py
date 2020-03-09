@@ -1,3 +1,7 @@
+"""
+pyStan model code snippets as strings.
+"""
+
 x_to_matrix = '\n'.join([
     'matrix[n, d + 1] X_matrix ;',
     'for (i in 1:n) {',

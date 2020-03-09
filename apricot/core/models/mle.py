@@ -1,13 +1,25 @@
+import typing
 import numpy as np
-from apricot.core.utils import random_seed
 
-def run_mle(interface, x, y, jitter=1e-10, fit_options=None, init_method='random',
-            algorithm='Newton', restarts=10, max_iter=250, seed=None):
+from apricot.core import utils
+
+def run_mle(
+        interface : 'apricot.core.models.interface.Interface',
+        x : np.ndarray,
+        y : np.ndarray,
+        jitter : float = 1e-10,
+        fit_options : typing.Optional[dict] = None,
+        init_method : str = 'random',
+        algorithm : str = 'Newton',
+        restarts : int = 10,
+        max_iter : int = 250,
+        seed : typing.Optional[int] = None,
+):
     """ Maximum marginal likelihood estimation via numerical optimisation
 
     Parameters
     ----------
-    interface : apricot.Interface instance
+    interface : instance of models.interface.Interface
         Interface to the desired Stan model
     x : ndarray
         (n,d) array with each row representing a sample point in d-dimensional
@@ -18,14 +30,13 @@ def run_mle(interface, x, y, jitter=1e-10, fit_options=None, init_method='random
         Magnitude of stability jitter. Default = 1e-10.
     fit_options :
         Optional extra parameters to the GP prior distribution.
-    init_method : {'random', 0, 'random'}, optional
-        Initialisation method for the optimisation:
-        * 'random' - randomly initialise hyperparameters on their support
-        * 0 - initialise all hyperparameters to 0
-        * 'stable' - initialise amplitude parameters to 1, lengthscales to
-        the standard deviation of the x in each respective dimension, and
-        other parameters to the mean of their prior distribution. Default
-        = 'random'.
+    init_method : {'stable', 'zero', 'random'}
+        String determining the initialisation method:
+        * 'stable' : "stable" initialise from data.
+        * 'zero' : initialise all parameters from zero.
+        * 'random' : initialise all parameters randomly on their support.
+        Separate random initialisations are used for each restart.
+        Default = 'random'.
     algorithm : str, optional
         String specifying which of Stan's gradient based optimisation
         algorithms to use. Default = 'Newton'.
@@ -38,7 +49,8 @@ def run_mle(interface, x, y, jitter=1e-10, fit_options=None, init_method='random
         Maximum allowable number of iterations for the chosen optimisation
         algorithm. Default = 250.
     seed : {int32, None}
-        Random seed.
+        Seed for numpy's random state. Also used to initialise pyStan.
+        Default = None.
 
     Returns
     -------
@@ -54,7 +66,7 @@ def run_mle(interface, x, y, jitter=1e-10, fit_options=None, init_method='random
     """
 
     if seed is None:
-        seed = random_seed()
+        seed = utils.random_seed()
 
     # make the data dictionary
     data = interface.make_pystan_dict(x, y, jitter, fit_options)
@@ -83,8 +95,12 @@ def run_mle(interface, x, y, jitter=1e-10, fit_options=None, init_method='random
     }
     return parameters, info
 
-def _mle_internal(interface, opts, restarts):
-    """Interface to pyStan optimiser"""
+def _mle_internal(
+        interface : 'apricot.core.models.interface.Interface',
+        opts : dict,
+        restarts : int,
+):
+    """ Interface to Stan's optimiser. """
     best = -np.inf
     result = None
     for r in range(restarts):

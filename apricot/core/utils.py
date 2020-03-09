@@ -1,3 +1,4 @@
+import typing
 import os
 import itertools
 import numpy as np
@@ -9,12 +10,25 @@ import apricot
 _ROOTDIR = os.path.dirname(os.path.abspath(apricot.__file__))
 _MODEL_CACHE = _ROOTDIR + '/cache/'
 
-def mad(arr, axis=None):
-    """Median absolute deviation"""
+def mad(arr : np.ndarray, axis : typing.Optional[int] = None):
+    """ Median absolute deviation.
+
+    Parameters
+    ----------
+    arr : ndarray
+        The array on which to calculate the MAD.
+    axis : {int, None}, optional
+        If provided, calculated the MAD along the specified axis.
+
+    Returns
+    -------
+    mad : {float, ndarray}
+        The MAD, calculated along the specified axis if provided.
+    """
     deviation = np.abs(arr - np.mean(arr, axis=axis))
     return np.median(deviation, axis=axis)
 
-def maybe(func):
+def maybe(func : callable):
     """ Decorator for functions which fail if any arguments are None.
 
     If any arguments passed to a function wrapped with maybe are None,
@@ -40,62 +54,55 @@ def maybe(func):
     return wrapper
 
 @maybe
-def _force_f_array(arr):
-    """Force numpy array to be F contiguous."""
+def _force_f_array(arr : np.ndarray):
+    """ Force provided numpy array to be F contiguous. """
     if arr.flags['F_CONTIGUOUS']:
         return arr
     else:
         return np.asfortranarray(arr)
 
 @maybe
-def _atleast2d_fview(arr):
-    """Force an array to be at least 2D and F contiguous."""
+def _atleast2d_fview(arr : np.ndarray):
+    """ Force provided numpy array to be at least 2D and F contiguous. """
     if arr.ndim == 1:
         return arr.reshape(-1, 1, order='F')
     else:
         return _force_f_array(arr)
 
 def random_seed():
-    """Generate pyStan Compatible Random Seed
-
-    Note
-    ----
-    Until scipy.optimize accepts a random seed, some apricot methods cannot be
-    made deterministic since the results of preliminary optimisations (e.g. to
-    construct an empirically derived prior distribution) cannot be tightly
-    controlled.
-    """
+    """ Generate pyStan Compatible Random Seed. """
     return np.random.randint(np.iinfo(np.int32).max)
 
-def set_seed(seed):
+def set_seed(seed : typing.Optional[int]):
+    """ Seed numpy's random state. """
     if seed is None:
         np.random.seed(random_seed())
     else:
         np.random.seed(seed)
 
-def is_string(x):
+def is_string(s : str):
     """Return True if x is a string of finite length"""
-    if x is None:
+    if s is None:
         return False
-    if type(x) is not str:
+    if type(s) is not str:
         return False
-    if len(x) == 0:
+    if len(s) == 0:
         return False
     return True
 
-def join_strings(seq):
-    """Join all of the elements of seq that are not None"""
+def join_strings(seq : typing.Sequence[typing.Optional[str]]):
+    """ Join all of the elements of seq that are not None with newlines. """
     return '\n'.join([elem for elem in seq if is_string(elem)])
 
 def to_list(x):
-    """If x is not a list, make it into a list"""
+    """ If x is not a list, make it into a list. """
     if type(x) is list:
         return x
     else:
         return [x]
 
 def join_lines(x):
-    """If x is a list, apply _join_strings. If not, do nothing."""
+    """ If x is a list, apply _join_strings. If not, do nothing."""
     if x is None:
         return None
     if type(x) is list:
@@ -103,12 +110,12 @@ def join_lines(x):
     else:
         return x
 
-def flatten(list2d):
-    """Flatten 2d iterable of iterables into 1d list"""
+def flatten(list2d : typing.Sequence[typing.Sequence]):
+    """ Flatten 2d iterable of iterables into 1d list """
     return list(itertools.chain.from_iterable(list2d))
 
 def inspect_cache():
-    """Inspect the contents of the model cache
+    """Inspect the contents of the model cache.
 
     Lists all .pkl files in the default cache location.
     """
@@ -129,4 +136,3 @@ def clear_model_cache():
             if file.endswith(".pkl"):
                 print('Removed file: {0}'.format(path + file))
                 os.remove(path + file)
-

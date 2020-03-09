@@ -1,9 +1,9 @@
 import re
+import typing
 import seaborn as sns
 import matplotlib
 from matplotlib import pyplot as plt
 from matplotlib import gridspec
-
 import numpy as np
 
 sns_context = 'paper'
@@ -14,7 +14,10 @@ sns.set_context(sns_context)
 sns.set_style(sns_style)
 sns.set_palette(sns_palette)
 
-def _assign_param_name(name, ndim, dim, log):
+Figure_Size = typing.Optional[typing.Tuple[float, float]]
+
+def _assign_param_name(name : str, ndim : int, dim : int, log : bool):
+    """ Assign parameter name for plotting. """
     if log:
         _name = 'log {0}'.format(name)
     else:
@@ -25,22 +28,29 @@ def _assign_param_name(name, ndim, dim, log):
         param_name = _name
     return param_name
 
-def _parse_param_str(s):
+def _parse_param_str(s : str):
+    """ Strip brackets from string s and return the bracketed value """
     x_ = re.sub('\[.*\]', '', s)
-    match = re.search(r'\[(.*?)\]',s)
+    match = re.search(r'\[(.*?)\]', s)
     if match:
         return x_, int(match.group(1))
     else:
         return x_, None
     
-def _get_param(hyperparameters, col):
+def _get_param(hyperparameters : dict, col : str):
     name, dim = _parse_param_str(col)
-    if dim:
-        return hyperparameters[name][:,dim-1]
-    else:
-        return hyperparameters[name][:,0]
+    if dim:  # parameter is vector valued
+        return hyperparameters[name][:, dim-1]
+    else:  # parameter is scalar valued
+        return hyperparameters[name][:, 0]
 
-def plot_parameter(hyperparameters, name, info, log_param=False, figsize=None):
+def plot_parameter(
+    hyperparameters : dict,
+    name : str,
+    info : dict,
+    log_param : bool = False,
+    figsize : Figure_Size = None,
+):
     if figsize is None:
         figsize = (7,3)
     ndim = hyperparameters[name].shape[1]
@@ -66,7 +76,11 @@ def plot_parameter(hyperparameters, name, info, log_param=False, figsize=None):
     plt.tight_layout()
     
 
-def plot_divergences(hyperparameters, info, figsize=None):
+def plot_divergences(
+    hyperparameters : dict,
+    info : dict,
+    figsize : Figure_Size = None,
+):
     if figsize is None:
         figsize = (7,3)
     colnames = info['colnames']

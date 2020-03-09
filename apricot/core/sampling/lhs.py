@@ -1,9 +1,10 @@
+import typing
 import numpy as np
 from scipy.spatial.distance import cdist
 from apricot.core.utils import set_seed
 
-def _maximin(v, p=2):
-    """'maximin' LHS quality criteria of Morris and Mitchell (1995).
+def _maximin(v : np.ndarray, p : int = 2):
+    """ 'maximin' LHS quality criteria of Morris and Mitchell (1995).
 
     The maximin LHS optimality criterion of [1]_.
 
@@ -11,6 +12,8 @@ def _maximin(v, p=2):
     ----------
     v : ndarray
         vector of pairwise distances for the sample
+    p : int
+        Constant. You should not need to change this; see [1]_.
 
     Returns
     -------
@@ -41,8 +44,12 @@ _CRITERIA = {
     'maximin': _maximin,
 }
 
-def lhs(n, d, seed=None):
-    """Latin Hypercube Sample design.
+def lhs(
+        n : int,
+        d : int,
+        seed : typing.Optional[int] = None,
+):
+    """ Latin Hypercube Sample design.
 
     Generate n stratified samples in d dimensions by drawing samples from a
     latin hypercube.
@@ -56,6 +63,9 @@ def lhs(n, d, seed=None):
         Number of requested sample points
     d : int
         Number of dimensions to sample in
+    seed : {None, int}, optional
+        Seed for numpy's random state. If None, an arbitrary seed is generated.
+        Default = None.
 
     Returns
     -------
@@ -81,8 +91,15 @@ def lhs(n, d, seed=None):
         s[:,j] = points[index, j]
     return s
 
-def mdurs(n, d, scale_factor=10, k=2, measure='cityblock', seed=None):
-    """Multi-dimensionally uniform random sample.
+def mdurs(
+        n : int,
+        d : int,
+        scale_factor : int = 10,
+        k : int = 2,
+        measure : str = 'cityblock',
+        seed : typing.Optional[int] = None,
+):
+    """ Multi-Dimensionally Uniform Random Sample.
 
     Implements the "LHSMDU" algorithm of Deutsch and Deutsch [1]_.
 
@@ -91,6 +108,13 @@ def mdurs(n, d, scale_factor=10, k=2, measure='cityblock', seed=None):
     algorithm iterates over individual sample points in a canidate pool rather
     than the sample designs themselves.
 
+    mdurs uses one of scipy's distance measures to maximise dispersion between
+    points. Valid distance measures are any supported by
+    scipy.spatial.distance.cdist, of which typical choices are:
+    * 'cityblock' : L1 distance
+    * 'eculidean' : L2 distance
+    * 'sqeuclidean' : squared L2 distance
+
     Parameters
     ----------
     n : int
@@ -98,20 +122,23 @@ def mdurs(n, d, scale_factor=10, k=2, measure='cityblock', seed=None):
     d : int
         Number of dimensions
     scale_factor : int, optional
-        Scale factor (default = 10). See citation: you should not need to
-        change this.
+        Scale factor (default = 10). You should not need to change this; see
+        [1]_.
     k : int, optional
         Number of neighbours used to compute moving average (default = 2).
-        See citation: you should not need to change this.
+        You should not need to change this; see [1]_.
     measure : string, optional
-        Distance measure to be used (default = 'cityblock'). References one of
-        the metrics compatible with scipy's cdist function.
+        Distance measure to be used. Passed as a method argument to scipy's
+        spatial.distance.cdist function. Default = 'cityblock'.
+    seed : {None, int}, optional
+        Seed for numpy's random state. If None, an arbitrary seed is generated.
+        Default = None.
 
     Returns
     -------
     S : ndarray
-        (n,d) array of n sample points in d dimensions.
-        Results are scaled on [0,1].
+        (n,d) array of n sample points in d dimensions. Results are scaled
+        on [0,1].
 
     Notes
     -----
@@ -137,9 +164,6 @@ def mdurs(n, d, scale_factor=10, k=2, measure='cityblock', seed=None):
     S = np.random.random((nr, d))
     while S.shape[0] > n:
         l = S.shape[0]
-
-        # old versions of scipy don't support the out argument in cdist!
-        # D = np.empty((l, l), np.float64, order='C')
         D = cdist(S, S, metric=measure)
         ret = np.empty(l, dtype=np.float64, order='C')
         for i in range(l):
@@ -147,8 +171,15 @@ def mdurs(n, d, scale_factor=10, k=2, measure='cityblock', seed=None):
         S = np.delete(S, np.argmin(ret), axis=0)
     return S
 
-def optimised_lhs(n, d, iterations=100, measure='euclidean', criteria='maximin',
-                  options=None, seed=None):
+def optimised_lhs(
+        n : int,
+        d : int,
+        iterations : int = 100,
+        measure : str = 'euclidean',
+        criteria : typing.Union[str, callable] = 'maximin',
+        options : typing.Optional[dict] = None,
+        seed : typing.Optional[int] = None,
+):
     """Optimised Latin Hypercube Sample design.
 
     Pick a sample from a collection of latin hypercube designs maximising a
@@ -178,26 +209,27 @@ def optimised_lhs(n, d, iterations=100, measure='euclidean', criteria='maximin',
     iterations : int, optional
         The number of individual designs to compare. The design maximising
         'criteria' after the requested number of iterations will be returned.
+        Default = 100.
     measure : str, optional
-        Distance measure to be used for comparing designs (default =
-        'euclidean'). References one of the measures compatible with scipy's
-        spatial.distance.cdist function (called a 'metric' in scipy).
-    criteria : str, optional
+        Distance measure to be used for comparing designs. References one of
+        the measures compatible with scipy's spatial.distance.cdist function.
+        Default = 'euclidean'.
+    criteria : {str, callable}, optional
         Comparison criteria:
         * 'maximin' - maximin criteria.
         * callable - user supplied function; see below.
-
-    Notes
-    -----
-    A user supplied function can be used as a comparison criteria. The supplied
-    function accepts a vector of pairwise distances calculated using 'measure'.
-    The function should return a quantity intended to be maximised.
 
     Returns 
     -------
     s : ndarray
         (n,d) array of n sample points in d dimensions. Results are scaled on
         [0,1] by default.
+
+    Notes
+    -----
+    A user supplied function can be used as a comparison criteria. The supplied
+    function accepts a vector of pairwise distances calculated using 'measure'.
+    The function should return a quantity intended to be maximised.
 
     References
     ----------
@@ -207,12 +239,9 @@ def optimised_lhs(n, d, iterations=100, measure='euclidean', criteria='maximin',
 
     See Also
     --------
-    scipy.spatial.distance.cdist : documentation for different measures.
-    evalCriteria : evaluates 'criteria' for 'measure'.
+    scipy.spatial.distance.cdist 
     """
-
     set_seed(seed)
-
     if options is None:
         options = {}
 
@@ -221,11 +250,9 @@ def optimised_lhs(n, d, iterations=100, measure='euclidean', criteria='maximin',
     l = slices[:n]
     u = slices[1:]
     indices_list = np.arange(n)
-
     points = np.empty((n,d), order='C', dtype=np.float64)
     s = np.empty((n,d), order='C', dtype=np.float64)
     tmp = -np.inf
-
     for i in range(iterations):
 
         # draw the uniform random numbers and set strata
@@ -247,8 +274,30 @@ def optimised_lhs(n, d, iterations=100, measure='euclidean', criteria='maximin',
 
     return ret
 
-def eval_criteria(arr, measure, criteria, options):
-    """Evaluate LHS optimality criteria."""
+def eval_criteria(
+        arr : np.ndarray,
+        measure : str,
+        criteria : typing.Union[str, callable],
+        options : dict
+):
+    """ Evaluate LHS optimality criteria.
+
+    Parameters
+    ----------
+    arr : ndarray
+        The array for which to evaluate the criteria.
+    measure : str
+        String describing a scipy.spatial.distance.cdist compatible metric.
+    criteria : {str, callable}
+        Name of the criteria to use or user supplied function.
+    options : dict
+        Additional keyword arguments to pass to criteria.
+
+    Returns
+    -------
+    criterion : float
+        Criteria, as evaluated for arr using measure.
+    """
     n = arr.shape[0]
     ix, jy = np.tril_indices(n, -1)
     dist = cdist(arr, arr, metric=measure)
