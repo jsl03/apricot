@@ -4,19 +4,19 @@ import numpy as np
 from apricot.core import utils
 
 def run_hmc(
-        interface : 'apricot.core.models.interface.Interface',
-        x : np.ndarray,
-        y : np.ndarray,
-        jitter : float = 1e-10,
-        fit_options : typing.Optional[dict] = None,
-        samples : int = 2000,
-        thin : int = 1,
-        chains : int = 4,
-        adapt_delta : float = 0.8,
-        max_treedepth : int = 10,
-        seed : typing.Optional[int] = None,
-        permute : bool = True,
-        init_method : str = 'stable',
+        interface: 'apricot.core.models.interface.Interface',
+        x: np.ndarray,
+        y: np.ndarray,
+        jitter: float = 1e-10,
+        fit_options: typing.Optional[dict] = None,
+        samples: int = 2000,
+        thin: int = 1,
+        chains: int = 4,
+        adapt_delta: float = 0.8,
+        max_treedepth: int = 10,
+        seed: typing.Optional[int] = None,
+        permute: bool = True,
+        init_method: str = 'stable',
 ):
     """Run Stan's HMC algorithm for the provided model.
 
@@ -76,19 +76,19 @@ def run_hmc(
     inits = [init] * chains
 
     control = {
-        'adapt_delta' : adapt_delta,
-        'max_treedepth' : max_treedepth,
+        'adapt_delta': adapt_delta,
+        'max_treedepth': max_treedepth,
     }
 
     opts = {
-        'data':data,
-        'init':inits,
-        'control':control,
-        'pars':interface._pars_to_sample,
-        'chains':chains,
-        'iter':int(samples * thin / chains * 2.0),
-        'thin':thin,
-        'seed':seed,
+        'data': data,
+        'init': inits,
+        'control': control,
+        'pars': interface._pars_to_sample,
+        'chains': chains,
+        'iter': int(samples * thin / chains * 2.0),
+        'thin': thin,
+        'seed': seed,
     }
     result = interface.pystan_model.sampling(**opts)
 
@@ -110,9 +110,9 @@ def run_hmc(
     return samples, info
 
 def _hmc_post_internal(
-        result : dict,
-        permute : bool = True,
-        seed : typing.Optional[int] = None,
+        result: dict,
+        permute: bool = True,
+        seed: typing.Optional[int] = None,
 ):
 
     # retrieve the Rhat positions and number of output variables
@@ -169,19 +169,20 @@ def _hmc_post_internal(
 
     # make info dictionary
     info = {
-        'method':'hmc',
-        'colnames':rows,
-        'sample_chain_id':chain_id,
-        'max_treedepth':max_td,
-        'excess_treedepth':excess_treedepth,
-        'divergent':divergent,
-        'rhat':rhat,
-        'n_eff':n_eff,
-        'e_bfmi':e_bfmi,
+        'method': 'hmc',
+        'colnames': rows,
+        'sample_chain_id': chain_id,
+        'max_treedepth': max_td,
+        'excess_treedepth': excess_treedepth,
+        'divergent': divergent,
+        'rhat': rhat,
+        'n_eff': n_eff,
+        'e_bfmi': e_bfmi,
     }
     return samples, info
 
-def _same_lengths(arrays : typing.List[np.ndarray]):
+
+def _same_lengths(arrays: typing.List[np.ndarray]):
     """Check if all supplied arrays are the same shape in dimension 0"""
     n = None
     for a in arrays:
@@ -191,9 +192,10 @@ def _same_lengths(arrays : typing.List[np.ndarray]):
             return False
     return True
 
+
 def _permute_aligned(
-        arrays : typing.List[np.ndarray],
-        seed : typing.Optional[int] =  None,
+        arrays: typing.List[np.ndarray],
+        seed: typing.Optional[int] =  None,
 ):
     """ Permute arrays, retaining row alignment.
 
@@ -216,12 +218,14 @@ def _permute_aligned(
     index = np.random.permutation(n)
     return (array[index] for array in arrays)
 
-def _calc_ebfmi(energy : np.ndarray):
+
+def _calc_ebfmi(energy: np.ndarray):
     """ Expected Bayesian Fraction of Missing Information. """
     tmp = np.sum((energy[1:] - energy[:-1])**2) / energy.shape[0]
     return tmp / np.var(energy)
 
-def _check_tree_saturation(excess_treedepth : np.ndarray, max_treedepth : int):
+
+def _check_tree_saturation(excess_treedepth: np.ndarray, max_treedepth: int):
     """ Check for incidences of tree depth saturation. """
     passed = True
     saturations = excess_treedepth[excess_treedepth == 0].shape[0]
@@ -229,21 +233,24 @@ def _check_tree_saturation(excess_treedepth : np.ndarray, max_treedepth : int):
         passed = False
     return passed
 
+
 def _check_ebfmi(ebfmi):
     """ Check that ebfmi > 0.2. """
     passed = True
-    for i,tmp in enumerate(ebfmi < 0.2):
+    for i, tmp in enumerate(ebfmi < 0.2):
         if tmp:
             passed = False
     return passed
 
-def _check_divergent(divergent : np.ndarray):
+
+def _check_divergent(divergent: np.ndarray):
     """ Check for divergences. """
     passed = True
     ndivergent = np.sum(divergent)
     if ndivergent > 0:
         passed = False
     return passed
+
 
 def _check_rhat(rhat):
     """ Check rhat < 1.1. """

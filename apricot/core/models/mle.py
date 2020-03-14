@@ -3,17 +3,18 @@ import numpy as np
 
 from apricot.core import utils
 
+
 def run_mle(
-        interface : 'apricot.core.models.interface.Interface',
-        x : np.ndarray,
-        y : np.ndarray,
-        jitter : float = 1e-10,
-        fit_options : typing.Optional[dict] = None,
-        init_method : str = 'random',
-        algorithm : str = 'Newton',
-        restarts : int = 10,
-        max_iter : int = 250,
-        seed : typing.Optional[int] = None,
+        interface: 'apricot.core.models.interface.Interface',
+        x: np.ndarray,
+        y: np.ndarray,
+        jitter: float = 1e-10,
+        fit_options:  typing.Optional[dict] = None,
+        init_method: str = 'random',
+        algorithm: str = 'Newton',
+        restarts: int = 10,
+        max_iter: int = 250,
+        seed: typing.Optional[int] = None,
 ):
     """ Maximum marginal likelihood estimation via numerical optimisation
 
@@ -76,29 +77,30 @@ def run_mle(
 
     # assign options
     opts = {
-        'data':data,
-        'init':init,
-        'as_vector' : False,
+        'data': data,
+        'init': init,
+        'as_vector': False,
         'algorithm': algorithm,
         'iter': max_iter,
-        'seed' : seed,
+        'seed': seed,
     }
     result = _mle_internal(interface, opts, restarts)
     parameters = result['par']
     info = {
-        'method' : 'mle',
-        'algorithm' : algorithm,
-        'theta_init' : init,
-        'max_iter' : max_iter,
-        'restarts' : restarts,
+        'method': 'mle',
+        'algorithm': algorithm,
+        'theta_init': init,
+        'max_iter': max_iter,
+        'restarts': restarts,
         'lp': result['value']
     }
     return parameters, info
 
+
 def _mle_internal(
-        interface : 'apricot.core.models.interface.Interface',
-        opts : dict,
-        restarts : int,
+        interface: 'apricot.core.models.interface.Interface',
+        opts: dict,
+        restarts: int,
 ):
     """ Interface to Stan's optimiser. """
     best = -np.inf
@@ -109,9 +111,10 @@ def _mle_internal(
             if result['value'] > best:
                 best = result['value']
                 result = result
-        except RuntimeError as rte:
-            # TODO save these to pass through info dictionary
+        except RuntimeError:
+            # TODO save rte and pass through to info dictionary
             pass
         if result is None:
-            raise RuntimeError(rte) from None
+            # something prevented optimiser from succeeding
+            raise RuntimeError from None
     return result

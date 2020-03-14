@@ -5,12 +5,12 @@ from apricot.core import emulator
 from apricot.core.models import interface, glue
 
 def fit(
-        x : np.ndarray,
-        y : np.ndarray,
-        kernel : typing.Optional[str] = 'eq',
-        mean : typing.Optional[str] = 'zero',
-        noise : typing.Optional[typing.Union[str, float]] = 'zero',
-        method : typing.Optional[str] = 'hmc',
+        x: np.ndarray,
+        y: np.ndarray,
+        kernel: typing.Optional[str] = 'eq',
+        mean: typing.Optional[str] = 'zero',
+        noise: typing.Optional[typing.Union[str, float]] = 'zero',
+        method: typing.Optional[str] = 'hmc',
         **kwargs,
 ):
     """ Fit a Gaussian Process emulator to data.
@@ -81,26 +81,26 @@ def fit(
     interface_instance = interface.Interface(kernel, mean, noise)
 
     if method.lower() == 'hmc':
-        return _fit_hmc(the_interface, x, y, **kwargs)
+        return _fit_hmc(interface_instance, x, y, **kwargs)
     elif method.lower() == 'mle':
-        return _fit_mle(the_interface, x, y, **kwargs)
+        return _fit_mle(interface_instance, x, y, **kwargs)
     else:
         raise ValueError("Unrecognised fit method: '{0}'.".format(method))
 
 def _fit_hmc(
-        interface_instance : interface.Interface,
-        x : np.ndarray,
-        y : np.ndarray,
-        jitter : float = 1e-10,
-        fit_options : typing.Optional[dict] = None,
-        samples : int = 4000,
-        thin : int = 1,
-        chains : int = 4,
-        adapt_delta : float = 0.8,
-        max_treedepth : int = 10,
-        seed : typing.Optional[int] = None,
-        permute : bool = True,
-        init_method : typing.Union[str, int] = 'stable',
+        interface_instance: interface.Interface,
+        x: np.ndarray,
+        y: np.ndarray,
+        jitter: float = 1e-10,
+        fit_options: typing.Optional[dict] = None,
+        samples: int = 4000,
+        thin: int = 1,
+        chains: int = 4,
+        adapt_delta: float = 0.8,
+        max_treedepth: int = 10,
+        seed: typing.Optional[int] = None,
+        permute: bool = True,
+        init_method: typing.Union[str, int] = 'stable',
 ):
     """ Run Stan's HMC algorithm for the provided model.
 
@@ -143,34 +143,36 @@ def _fit_hmc(
         Emulator fit to data.
     """
     opts = {
-        'jitter' : jitter,
-        'fit_options' : fit_options,
-        'samples' : samples,
-        'thin' : thin,
-        'chains' : chains,
-        'adapt_delta' : adapt_delta,
-        'max_treedepth' : max_treedepth,
-        'seed' : seed,
-        'permute' : permute,
-        'init_method' : init_method,
+        'jitter': jitter,
+        'fit_options': fit_options,
+        'samples': samples,
+        'thin': thin,
+        'chains': chains,
+        'adapt_delta': adapt_delta,
+        'max_treedepth': max_treedepth,
+        'seed': seed,
+        'permute': permute,
+        'init_method': init_method,
     }
     samples, info = interface_instance.hmc(x, y, **opts)
     hyperparameters = glue.hmc_glue(interface_instance, samples, info)
-    emulator_instance = emulator.Emulator(x,
-                                          y,
-                                          hyperparameters,
-                                          info=info,
-                                          kernel_type = interface_instance.kernel_type,
-                                          mean_function_type = interface_instance.mean_function_type,
-                                          jitter = jitter
+    emulator_instance = emulator.Emulator(
+        x,
+        y,
+        hyperparameters,
+        info=info,
+        kernel_type=interface_instance.kernel_type,
+        mean_function_type=interface_instance.mean_function_type,
+        jitter=jitter
     )
     return emulator_instance
 
 def _fit_mle(
-        interface_instance : interface.Interface,
-        x : np.ndarray,
-        y : np.ndarray,
-        jitter : float = 1e-10):
+        interface_instance: interface.Interface,
+        x: np.ndarray,
+        y: np.ndarray,
+        jitter: float = 1e-10
+):
     """ Optimise log likelihood of the hyperparameters for the provided model.
 
     Parameters
@@ -189,12 +191,13 @@ def _fit_mle(
     """
     result, info = interface_instance.mle(x, y)
     hyperparameters = glue.mle_glue(interface_instance, result, info)
-    emulator_instance = emulator.Emulator(x,
-                                          y,
-                                          hyperparameters,
-                                          info = info,
-                                          kernel_type = interface_instance.kernel_type,
-                                          mean_function_type = interface_instance.mean_function_type,
-                                          jitter = jitter
+    emulator_instance = emulator.Emulator(
+        x,
+        y,
+        hyperparameters,
+        info=info,
+        kernel_type=interface_instance.kernel_type,
+        mean_function_type=interface_instance.mean_function_type,
+        jitter=jitter
     )
     return emulator_instance

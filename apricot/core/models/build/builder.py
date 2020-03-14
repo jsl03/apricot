@@ -3,10 +3,11 @@ from apricot.core import utils
 from apricot.core.models.build import components
 from apricot.core.models.build import core_parts
 
+
 def assmeble_model_code(
-        kernel_part : components.StanModelKernel,
-        mean_part : components.StanModelMeanFunction,
-        noise_part : components.StanModelNoise,
+        kernel_part: components.StanModelKernel,
+        mean_part: components.StanModelMeanFunction,
+        noise_part: components.StanModelNoise,
 ):
     """ Assemble the pyStan model code.
 
@@ -27,11 +28,12 @@ def assmeble_model_code(
     core_part = core_parts._get_core()
     return _fuse_code_blocks(core_part, kernel_part, mean_part, noise_part)
 
+
 def _fuse_code_blocks(
-        core : components.StanModelPart,
-        kernel : components.StanModelKernel,
-        mean : components.StanModelMeanFunction,
-        noise : components.StanModelNoise,
+        core: components.StanModelPart,
+        kernel: components.StanModelKernel,
+        mean: components.StanModelMeanFunction,
+        noise: components.StanModelNoise,
 ):
     """ Fuse the code blocks together.
 
@@ -70,9 +72,10 @@ def _fuse_code_blocks(
     for block in model_code:
         formatted_blocks.append(block.replace('\n', '\n  '))
 
-    # fuse the blocks together with the appropriate names
-    fuse = lambda name, block : '{0} {{\n  {1}\n}}'.format(name, block)
-    model_blocks = (fuse(n, b) for n, b in zip(names, formatted_blocks))
+    model_blocks = (_fuse(n, b) for n, b in zip(names, formatted_blocks))
 
     # join blocks together with newlines and we're done
     return '\n'.join(model_blocks)
+
+def _fuse(name, block):
+    return '{0} {{\n  {1}\n}}'.format(name, block)

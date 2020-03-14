@@ -22,12 +22,13 @@ import numpy as np
 import six
 from apricot.core.utils import set_seed
 
+
 def sobol_scatter(
-        n : int,
-        d : int,
-        seed : typing.Optional[int] = None,
-        generator_seed : int = 1,
-        skip : int =0,
+        n: int,
+        d: int,
+        seed: typing.Optional[int] = None,
+        generator_seed: int = 1,
+        skip: int = 0,
 ):
     """ Generate n d-dimensional quasi-random vectors using the Sobol sequence,
     with additive uniform randomisation.
@@ -82,17 +83,18 @@ def sobol_scatter(
     for j in range(n):
         r[j, :] = six.next(seq_generator)
     r += np.random.random(size=r.shape)
-    while( (r<0).any() | (r>1).any()):
-        r[r>1] -= 1
-        r[r<0] += 1
+    while((r < 0).any() | (r > 1).any()):
+        r[r > 1] -= 1
+        r[r < 0] += 1
     return r
 
+
 def sobol(
-        n : int,
-        d : int,
-        seed : typing.Optional[int] = None,
-        generator_seed : typing.Optional[int] = 1,
-        skip : int = 0,
+        n: int,
+        d: int,
+        seed: typing.Optional[int] = None,
+        generator_seed: typing.Optional[int] = 1,
+        skip: int = 0,
 ):
     """ Generate n length d quasi-random vectors from the Sobol sequence.
 
@@ -149,7 +151,8 @@ def sobol(
         r[j, :] = six.next(seq_generator)
     return r
 
-def i4_bit_hi1(n : int):
+
+def i4_bit_hi1(n: int):
     """ Return the position of the high 1 bit base 2 in an integer. """
     i = np.floor(n)
     bit = 0
@@ -158,7 +161,8 @@ def i4_bit_hi1(n : int):
         i //= 2
     return bit
 
-def i4_bit_lo0(n : int):
+
+def i4_bit_lo0(n: int):
     """ Return the position of the low 0 bit base 2 in an integer. """
     bit = 1
     i = np.floor(n)
@@ -174,6 +178,7 @@ MAXCOL = i4_bit_hi1(ATMOST)
 POLY = [1, 3, 7, 11, 13, 19, 25, 37, 59, 47, 61, 55, 41, 67, 97, 91, 109, 103,
         115, 131, 193, 137, 145, 143, 241, 157, 185, 167, 229, 171, 213, 191,
         253, 203, 211, 239, 247, 285, 369, 299]
+
 
 def init_v():
     """Initialise v for the Sobol sequence generator.
@@ -211,22 +216,22 @@ def init_v():
     v[19:40, 6] = np.array([13, 33, 115, 41, 79, 17, 29, 119, 75, 73, 105, 7,
                             59, 65, 21, 3, 113, 61, 89, 45, 107])
 
-
     v[37:40, 7] = np.array([7, 23, 39])
 
-    
     v[0, 0:MAXCOL] = 1
 
     return v
 
-def prime_ge(n : int):
+
+def prime_ge(n: int):
     """ Return the smallest prime greater than or equal to n. """
     p = max(np.ceil(n), 2)
     while not is_prime(p):
         p += 1
     return p
 
-def is_prime(n : int):
+
+def is_prime(n: int):
     """ True if n is prime, else False.
 
     Original version by Corrado Chisari.
@@ -247,10 +252,11 @@ def is_prime(n : int):
         p += 6
     return True
 
+
 def i4_sobol2(
-        dim_num : int,
-        generator_seed : int = 0,
-        skip : int = 1
+        dim_num: int,
+        generator_seed: int = 0,
+        skip: int = 1
 ):
     """ Sobol sequence generator.
 
@@ -280,7 +286,8 @@ def i4_sobol2(
     Volume 16, pages 236-242, 1977.
 
     Ilya Sobol, Levitan,
-    The Production of Points Uniformly Distributed in a Multidimensional Cube (in Russian),
+    The Production of Points Uniformly Distributed in a Multidimensional Cube
+    (in Russian),
     Preprint IPM Akad. Nauk SSSR,
     Number 40, Moscow 1976.
     """
@@ -289,7 +296,7 @@ def i4_sobol2(
     if generator_seed < 0:
         generator_seed = 0
 
-    v = init_v() 
+    v = init_v()
     #  Initialize the remaining rows of V.
     for i in range(2, dim_num + 1):
 

@@ -93,7 +93,7 @@ class BuildExt(build_ext):
         for ext in self.extensions:
             ext.extra_compile_args = opts
 
-        build_ext.build_extensions(self)
+        build_ext.build_extensions(self) 
 
 setup(
     name='apricot',

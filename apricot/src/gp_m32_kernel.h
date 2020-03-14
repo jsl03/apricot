@@ -1,4 +1,4 @@
-/* Matern32 (M32) Covariance Kernel */
+/* Matern32 (M32) Covariance Kernel  */
 
 Eigen::LLT<Eigen::MatrixXd> L_cov_m32(
     Eigen::Ref<const Eigen::MatrixXd> x,

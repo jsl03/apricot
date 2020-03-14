@@ -1,4 +1,4 @@
-/* Rational Quadratic (RQ) Covariance Kernel */
+/* Rational Quadratic (RQ) Covariance Kernel  */
 
 Eigen::LLT<Eigen::MatrixXd> L_cov_rq(
     Eigen::Ref<const Eigen::MatrixXd> x,

@@ -1,4 +1,4 @@
-/* Matern52 (M52) Covariance Kernel */
+/* Matern52 (M52) Covariance Kernel  */
 
 Eigen::LLT<Eigen::MatrixXd> L_cov_m52(
     Eigen::Ref<const Eigen::MatrixXd> x,

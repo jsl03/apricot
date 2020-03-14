@@ -3,7 +3,7 @@
 Eigen::LLT<Eigen::MatrixXd> L_cov_eq(
     Eigen::Ref<const Eigen::MatrixXd> x,      // (n,d) array of points 
     const double amp_sq,                      // squared marginal standard deviation 
-    Eigen::Ref<const Eigen::VectorXd> ls_sq,  // squared anisotropic lengthscales
+    Eigen::Ref<const Eigen::VectorXd> ls_sq,  // (d,) squared anisotropic lengthscales
     const double sigma_sq                     // squared noise standard deviation
     )
 {
@@ -29,7 +29,7 @@ Eigen::LLT<Eigen::MatrixXd> L_cov_eq(
 Eigen::MatrixXd cov_eq(
     Eigen::Ref<const Eigen::MatrixXd> x,      // (n,d) array of points 
     const double amp_sq,                      // squared marginal standard deviation
-    Eigen::Ref<const Eigen::VectorXd> ls_sq,  // squared anisotropic lengthscales
+    Eigen::Ref<const Eigen::VectorXd> ls_sq,  // (d,) squared anisotropic lengthscales
     const double sigma_sq                     // squared noise standard deviation
     )
 {
@@ -56,7 +56,7 @@ Eigen::MatrixXd cross_cov_eq(
     Eigen::Ref<const Eigen::MatrixXd> x1,     // (n,d) array of points
     Eigen::Ref<const Eigen::MatrixXd> x2,     // (n,d) array of points
     double amp_sq,                            // squared marginal standard deviation
-    Eigen::Ref<const Eigen::VectorXd> ls_sq   // squared anisotropic lengthscales
+    Eigen::Ref<const Eigen::VectorXd> ls_sq   // (d,) squared anisotropic lengthscales
 )
 {
     Eigen::RowVectorXd ls = ls_sq.transpose().array().sqrt();
@@ -71,10 +71,10 @@ Eigen::MatrixXd cross_cov_eq(
 }
 
 Eigen::RowVectorXd cov_1d_eq(
-    Eigen::Ref<const Eigen::RowVectorXd> xstar1d,    //
-    Eigen::Ref<const Eigen::MatrixXd> x,             //
-    const double amp_sq,                             //
-    Eigen::Ref<const Eigen::VectorXd> ls_sq)         //
+    Eigen::Ref<const Eigen::RowVectorXd> xstar1d,    // (d,) vector 
+    Eigen::Ref<const Eigen::MatrixXd> x,             // (n, d) array of points
+    const double amp_sq,                             // squared marginal standard deviation
+    Eigen::Ref<const Eigen::VectorXd> ls_sq)         // (d,) squared anisotropic lengthscales
 {
     Eigen::RowVectorXd c(x.rows());
     double tau;
@@ -89,14 +89,14 @@ Eigen::RowVectorXd cov_1d_eq(
 }
 
 Eigen::RowVectorXd cross_cov_grad_eq(
-    Eigen::Ref<const Eigen::RowVectorXd> xstar,
-    Eigen::Ref<const Eigen::MatrixXd> x,
-    int d,
-    double amp_sq,
-    Eigen::Ref<const Eigen::VectorXd> ls_sq,
-    Eigen::Ref<const Eigen::MatrixXd> kxstarx)
+    Eigen::Ref<const Eigen::RowVectorXd> xstar1d,   // (d,) vector
+    Eigen::Ref<const Eigen::MatrixXd> x,            // (n, d) array of points
+    int d,                                          // dimension to compute derivative in
+    double amp_sq,                                  // squared marginal standard deviation
+    Eigen::Ref<const Eigen::VectorXd> ls_sq,        // (d) squared anisotropic lengthscales
+    Eigen::Ref<const Eigen::MatrixXd> kxstarx)      // cross_cov_eq(xstar, x | amp_sq, ls_sq)
 {
-    return ((xstar(d) - x.col(d).array()) / ls_sq(d)).transpose().array() * kxstarx.array();
+    return ((xstar1d(d) - x.col(d).array()) / ls_sq(d)).transpose().array() * kxstarx.array();
 }
 
 /* Gaussian Process Class*/
@@ -104,59 +104,74 @@ Eigen::RowVectorXd cross_cov_grad_eq(
 class GpEqKernel
 {
 private:
-    Eigen::MatrixXd x;
-    Eigen::VectorXd y;
-    Eigen::VectorXd amp_sq;
-    Eigen::MatrixXd ls_sq;
-    Eigen::VectorXd sigma_sq;
-    double delta;
-    std::vector<Eigen::LLT<Eigen::MatrixXd>> lxxs;
-    std::vector<Eigen::VectorXd> axxs;
+    Eigen::MatrixXd x;                                  // (n, d) array of points 
+    Eigen::VectorXd y;                                  // (n) vector of responses
+    Eigen::VectorXd amp_sq;                             // marginal standard deviation
+    Eigen::MatrixXd ls_sq;                              // (d) squared anisotropic lengthscales
+    Eigen::VectorXd sigma_sq;                           // marginal noise variance
+    double delta;                                       // stability jitter
+    std::vector<Eigen::LLT<Eigen::MatrixXd>> lxxs;      // lower cholesky factor of covariance matrix
+    std::vector<Eigen::VectorXd> axxs;                  // dot product between inverse covariance matrix and vector y
 
 public:
     GpEqKernel(
-        const Eigen::MatrixXd &xdata,
-        const Eigen::VectorXd &ydata,
-        const Eigen::VectorXd &amp,
-        const Eigen::MatrixXd &ls,
-        const Eigen::VectorXd &sigma,
-        const double jitter);
+        const Eigen::MatrixXd &xdata,  // (n, d) array of points
+        const Eigen::VectorXd &ydata,  // (n) vector of responses
+        const Eigen::VectorXd &amp,    // (m) samples of marginal standard deviation
+        const Eigen::MatrixXd &ls,     // (m, d) array of m samples of the d anisotropic lengthscales
+        const Eigen::VectorXd &sigma,  // (m) samples of the marginal noise standard deviation
+        const double jitter            // stability jitter
+        );
 
-    // data views
+    // view sample points (i.e., array x)
     const Eigen::MatrixXd view_x();
+
+    // view responses (i.e., vector y)
     const Eigen::VectorXd view_y();
+
+    // view hyperparameters (i.e., amp, ls, sigma)
     std::tuple<const Eigen::VectorXd, const Eigen::MatrixXd, const Eigen::VectorXd> view_parameters();
+
+    // view lower cholesky factors of k(x, x | amp, ls, sigma)
     std::vector<Eigen::MatrixXd> view_lxx();
 
-    // posterior
+    // posterior joint distribution
     std::tuple<Eigen::MatrixXd, std::vector<Eigen::MatrixXd>> posterior(Eigen::Ref<const Eigen::MatrixXd> xstar);
 
-    // posterior (cholesky decomposition)
+    // lower cholesky factor of posterior joint distribution
     std::tuple<Eigen::MatrixXd, std::vector<Eigen::MatrixXd>> posterior_chol(Eigen::Ref<const Eigen::MatrixXd> xstar);
 
-    // posterior marginals
+    // posterior marginal distributions
     std::tuple<Eigen::MatrixXd, Eigen::MatrixXd> marginals(Eigen::Ref<const Eigen::MatrixXd> xstar);
 
     // expectation
     Eigen::VectorXd E(Eigen::Ref<const Eigen::MatrixXd> xstar);
+
+    // expectation and its jacobian
     std::tuple<double, Eigen::VectorXd> E_jac(Eigen::Ref<const Eigen::RowVectorXd> xstar);
 
     // pure exploration (i.e., posterior variance)
     Eigen::VectorXd px(Eigen::Ref<const Eigen::MatrixXd> xstar);
+
+    // pure exploration and its jacobian
     std::tuple<Eigen::VectorXd, Eigen::VectorXd> px_jac(Eigen::Ref<const Eigen::RowVectorXd> xstar);
 
     // expected improvement
     Eigen::VectorXd ei(Eigen::Ref<const Eigen::MatrixXd> xstar);
+
+    // expected improvement and its jacobian
     std::tuple<double, Eigen::VectorXd> ei_jac(Eigen::Ref<const Eigen::RowVectorXd> xstar);
 
     // upper confidence bound
     Eigen::VectorXd ucb(Eigen::Ref<const Eigen::MatrixXd> xstar, double beta);
+
+    // upper confidence bound and its jacobian
     std::tuple<double, Eigen::VectorXd> ucb_jac(Eigen::Ref<const Eigen::RowVectorXd> xstar, double beta);
 
     // leave-one-out cross validation
     Eigen::MatrixXd loo_cv();
 
-    // entropy
+    // differential entropy
     double entropy(Eigen::Ref<const Eigen::MatrixXd> xstar);
 };
 
@@ -196,7 +211,7 @@ const Eigen::VectorXd GpEqKernel::view_y()
     return y;
 }
 
-// provide a view of parameters
+// provide a view of the hyperparameters (amplitude, lengthscales, noise s.d.)
 std::tuple<const Eigen::VectorXd, const Eigen::MatrixXd, const Eigen::VectorXd> GpEqKernel::view_parameters()
 {
     return std::make_tuple(amp_sq, ls_sq, sigma_sq);

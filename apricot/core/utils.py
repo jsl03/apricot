@@ -10,7 +10,8 @@ import apricot
 _ROOTDIR = os.path.dirname(os.path.abspath(apricot.__file__))
 _MODEL_CACHE = _ROOTDIR + '/cache/'
 
-def mad(arr : np.ndarray, axis : typing.Optional[int] = None):
+
+def mad(arr: np.ndarray, axis: typing.Optional[int] = None):
     """ Median absolute deviation.
 
     Parameters
@@ -28,7 +29,8 @@ def mad(arr : np.ndarray, axis : typing.Optional[int] = None):
     deviation = np.abs(arr - np.mean(arr, axis=axis))
     return np.median(deviation, axis=axis)
 
-def maybe(func : callable):
+
+def maybe(func: callable):
     """ Decorator for functions which fail if any arguments are None.
 
     If any arguments passed to a function wrapped with maybe are None,
@@ -53,34 +55,39 @@ def maybe(func : callable):
             return func(*args)
     return wrapper
 
+
 @maybe
-def _force_f_array(arr : np.ndarray):
+def _force_f_array(arr: np.ndarray):
     """ Force provided numpy array to be F contiguous. """
     if arr.flags['F_CONTIGUOUS']:
         return arr
     else:
         return np.asfortranarray(arr)
 
+
 @maybe
-def _atleast2d_fview(arr : np.ndarray):
+def _atleast2d_fview(arr: np.ndarray):
     """ Force provided numpy array to be at least 2D and F contiguous. """
     if arr.ndim == 1:
         return arr.reshape(-1, 1, order='F')
     else:
         return _force_f_array(arr)
 
+
 def random_seed():
     """ Generate pyStan Compatible Random Seed. """
     return np.random.randint(np.iinfo(np.int32).max)
 
-def set_seed(seed : typing.Optional[int]):
+
+def set_seed(seed: typing.Optional[int]):
     """ Seed numpy's random state. """
     if seed is None:
         np.random.seed(random_seed())
     else:
         np.random.seed(seed)
 
-def is_string(s : str):
+
+def is_string(s: str):
     """Return True if x is a string of finite length"""
     if s is None:
         return False
@@ -90,9 +97,11 @@ def is_string(s : str):
         return False
     return True
 
-def join_strings(seq : typing.Sequence[typing.Optional[str]]):
+
+def join_strings(seq: typing.Sequence[typing.Optional[str]]):
     """ Join all of the elements of seq that are not None with newlines. """
     return '\n'.join([elem for elem in seq if is_string(elem)])
+
 
 def to_list(x):
     """ If x is not a list, make it into a list. """
@@ -100,6 +109,7 @@ def to_list(x):
         return x
     else:
         return [x]
+
 
 def join_lines(x):
     """ If x is a list, apply _join_strings. If not, do nothing."""
@@ -110,9 +120,11 @@ def join_lines(x):
     else:
         return x
 
-def flatten(list2d : typing.Sequence[typing.Sequence]):
+
+def flatten(list2d: typing.Sequence[typing.Sequence]):
     """ Flatten 2d iterable of iterables into 1d list """
     return list(itertools.chain.from_iterable(list2d))
+
 
 def inspect_cache():
     """Inspect the contents of the model cache.
@@ -125,6 +137,7 @@ def inspect_cache():
             if file.endswith(".pkl"):
                 cached_models.append(path + file)
     return cached_models
+
 
 def clear_model_cache():
     """Clears the model cache

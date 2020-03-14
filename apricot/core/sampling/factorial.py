@@ -4,10 +4,11 @@ import numpy as np
 from apricot.core.logger import get_logger
 logger = get_logger()
 
+
 def factorial(
-        n : int,
-        d : int,
-        seed : typing.Optional[int] = None,
+        n: int,
+        d: int,
+        seed: typing.Optional[int] = None,
 ):
     """ Factorial sample design
 
@@ -39,12 +40,14 @@ def factorial(
     vecs = (np.linspace(0, 1, n_valid) for _ in range(d))
     return cartesian(*vecs)
 
-def cartesian(*args : np.ndarray):
+
+def cartesian(*args: np.ndarray):
     """Cartesian product of a sequence of arrays"""
     d = len(args)
     return np.array(np.meshgrid(*args)).T.reshape(-1, d, order='C')
 
-def _power_d_less_n(n : int, d : int):
+
+def _power_d_less_n(n: int, d: int):
     """ find a such that d**a < n"""
     a = 1
     while True:

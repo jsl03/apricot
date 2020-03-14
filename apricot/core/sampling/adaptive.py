@@ -2,11 +2,12 @@ import numpy as np
 
 from apricot.core.sampling.hypercube import sample_hypercube
 
+
 def max_entropy(
         emulator,
-        n : int,
-        pool : int = 200,
-        method : str = 'lhs',
+        n: int,
+        pool: int = 200,
+        method: str = 'lhs',
 ):
     """ Maximum Entropy LHS sample
 

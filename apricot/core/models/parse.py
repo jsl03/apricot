@@ -3,12 +3,14 @@ from apricot.core import exceptions
 from apricot.core.models.build import mean_parts
 from apricot.core.models.build import noise_parts
 
+
 #TODO: this is broken: doesnt parse anything
-def parse_kernel(kernel_type : str):
+def parse_kernel(kernel_type: str):
     """Parse requested kernel option."""
     return kernel_type
 
-def parse_noise(noise_type : typing.Optional[typing.Union[float, str]]):
+
+def parse_noise(noise_type: typing.Optional[typing.Union[float, str]]):
     """ Parse requested noise option.
 
     Parameters
@@ -36,15 +38,21 @@ def parse_noise(noise_type : typing.Optional[typing.Union[float, str]]):
         noise = _parse_noise_float(noise_type)
     return _parse_noise_internal(noise)
 
-def _parse_noise_str(as_str : str):
+
+def _parse_noise_str(as_str: str):
     """ Parse noise options that are strings. """
     if as_str == 'zero' or as_str == 'none':
         return 0.0
     if as_str == 'infer':
         return 'infer'
-    exceptions._raise_NotImplemented('noise function', as_str, noise_parts.AVAILABLE)
+    exceptions._raise_NotImplemented(
+        'noise function',
+        as_str,
+        noise_parts.AVAILABLE
+    )
 
-def _parse_noise_float(noise_type : float):
+
+def _parse_noise_float(noise_type: float):
     """ Parse noise options that are floating point numbers. """
     try:
         noise = float(noise_type)
@@ -52,7 +60,8 @@ def _parse_noise_float(noise_type : float):
         raise TypeError("'noise_type' must be either a floating point number, None, 'zero' or 'infer'.")
     return noise
 
-def _parse_noise_internal(noise : typing.Union[str, float]):
+
+def _parse_noise_internal(noise: typing.Union[str, float]):
     """ Assign noise options to required format. """
     if type(noise) is float:
         noise_option = 'deterministic'
@@ -62,7 +71,8 @@ def _parse_noise_internal(noise : typing.Union[str, float]):
         value = None
     return noise_option, value
 
-def parse_mean(mean_type : typing.Optional[typing.Union[str, float]]):
+
+def parse_mean(mean_type: typing.Optional[typing.Union[str, float]]):
     """ Parse requested mean function option.
 
     Parameters
@@ -81,7 +91,7 @@ def parse_mean(mean_type : typing.Optional[typing.Union[str, float]]):
     Notes
     -----
     'linear' will compile but no predictive model for a linear mean
-    currently exists inside apricot/src! 
+    currently exists inside apricot/src!
     """
     if mean_type is None:
         return 'zero'
@@ -90,22 +100,29 @@ def parse_mean(mean_type : typing.Optional[typing.Union[str, float]]):
     else:
         return _parse_mean_other(mean_type)
 
-def _parse_mean_str(as_str : str):
+
+def _parse_mean_str(as_str: str):
     if as_str == 'zero':
         return 'zero'
     elif as_str == 'linear':
         return 'linear'
-    else: 
-        exceptions._raise_NotImplemented('mean function', mean_type, mean_parts.AVAILABLE)
+    else:
+        exceptions._raise_NotImplemented(
+            'mean function',
+            as_str,
+            mean_parts.AVAILABLE
+        )
+
 
 # realistically, mean_type can only be 0 or we raise an exception
-def _parse_mean_other(mean_type : int):
+def _parse_mean_other(mean_type: int):
     if mean_type == 0:
         return 'zero'
     else:
         exceptions._raise_NotParsed('mean function', type(mean_type))
 
-def parse_warping(warping : typing.Optional[typing.Union[bool, str]]):
+
+def parse_warping(warping: typing.Optional[typing.Union[bool, str]]):
     """ Parse warping option.
 
     Parameters
@@ -129,7 +146,8 @@ def parse_warping(warping : typing.Optional[typing.Union[bool, str]]):
     else:
         exceptions._raise_NotParsed('warping', type(warping))
 
-def _parse_warping_string(as_str : str):
+
+def _parse_warping_string(as_str: str):
     if as_str == 'none':
         return False
     elif as_str == 'linear':

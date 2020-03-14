@@ -22,9 +22,11 @@ def find_kernel(name, warping):
     else:
         return _apply(kernel_options)
 
+
 def make_kernel(kernel_type, warping):
     kernel_options = find_kernel(kernel_type, warping)
     return StanModelKernel(**kernel_options)
+
 
 GP_DATA_GENERIC = [
     'real<lower=0> amp_loc;',
@@ -33,20 +35,24 @@ GP_DATA_GENERIC = [
     'vector<lower=0>[d] ls_beta;',
 ]
 
+
 GP_PARAMETERS_GENERIC = [
     'real<lower=0> amp;',
     'vector<lower=0>[d] ls;',
 ]
+
 
 GP_MODEL_GENERIC = [
     'amp ~ student_t(3, amp_loc, amp_scale);',
     'ls ~ inv_gamma(ls_alpha, ls_beta);',
 ]
 
+
 GP_ARGS_GENERIC = [
     ('amp', 1),
     ('ls', 'd')
 ]
+
 
 GP_DATA_PRIORS_GENERIC = [
     'amp_loc',
@@ -55,18 +61,20 @@ GP_DATA_PRIORS_GENERIC = [
     'ls_beta',
 ]
 
+
 kernel_eq = {
-    'name' : 'eq',
-    'functions' : L_cov_eq_xi,
-    'data' : GP_DATA_GENERIC, 
-    'transformed_data' : None,
-    'parameters' : GP_PARAMETERS_GENERIC,
-    'kernel_signature' : 'L_cov_eq_xi(__x__, amp, ls, xi, jitter, n)',
-    'model' : GP_MODEL_GENERIC,
-    'args' : GP_ARGS_GENERIC,
-    'to_sample' : ['amp', 'ls'],
-    'data_priors' : GP_DATA_PRIORS_GENERIC,
+    'name': 'eq',
+    'functions': L_cov_eq_xi,
+    'data': GP_DATA_GENERIC, 
+    'transformed_data': None,
+    'parameters': GP_PARAMETERS_GENERIC,
+    'kernel_signature': 'L_cov_eq_xi(__x__, amp, ls, xi, jitter, n)',
+    'model': GP_MODEL_GENERIC,
+    'args': GP_ARGS_GENERIC,
+    'to_sample': ['amp', 'ls'],
+    'data_priors': GP_DATA_PRIORS_GENERIC,
 }
+
 
 kernel_eq_flat = {
     'name' : 'eq_flat',
@@ -81,56 +89,60 @@ kernel_eq_flat = {
     'data_priors' : [],
 }
 
+
 kernel_m52 = {
-    'name' : 'm52',
-    'functions' : L_cov_m52_xi,
-    'data' : GP_DATA_GENERIC,
-    'transformed_data' : None,
-    'parameters' : GP_PARAMETERS_GENERIC,
-    'kernel_signature' : 'L_cov_m52_xi(__x__, amp, ls, xi, jitter, n, d)',
-    'model' : GP_MODEL_GENERIC,
-    'args' : GP_ARGS_GENERIC,
-    'to_sample' : ['amp', 'ls'],
-    'data_priors' : GP_DATA_PRIORS_GENERIC,
+    'name': 'm52',
+    'functions': L_cov_m52_xi,
+    'data': GP_DATA_GENERIC,
+    'transformed_data': None,
+    'parameters': GP_PARAMETERS_GENERIC,
+    'kernel_signature': 'L_cov_m52_xi(__x__, amp, ls, xi, jitter, n, d)',
+    'model': GP_MODEL_GENERIC,
+    'args': GP_ARGS_GENERIC,
+    'to_sample': ['amp', 'ls'],
+    'data_priors': GP_DATA_PRIORS_GENERIC,
 }
+
 
 kernel_m32 = {
-    'name' : 'm32',
-    'functions' : L_cov_m32_xi,
-    'data' : GP_DATA_GENERIC,
-    'transformed_data' : None,
-    'parameters' : GP_PARAMETERS_GENERIC,
-    'kernel_signature' : 'L_cov_m32_xi(__x__, amp, ls, xi, jitter, n, d)',
-    'model' : GP_MODEL_GENERIC,
-    'args' : GP_ARGS_GENERIC,
-    'to_sample' : ['amp', 'ls'],
-    'data_priors' : GP_DATA_PRIORS_GENERIC,
+    'name': 'm32',
+    'functions': L_cov_m32_xi,
+    'data': GP_DATA_GENERIC,
+    'transformed_data': None,
+    'parameters': GP_PARAMETERS_GENERIC,
+    'kernel_signature': 'L_cov_m32_xi(__x__, amp, ls, xi, jitter, n, d)',
+    'model': GP_MODEL_GENERIC,
+    'args': GP_ARGS_GENERIC,
+    'to_sample': ['amp', 'ls'],
+    'data_priors': GP_DATA_PRIORS_GENERIC,
 }
 
+
 kernel_rq = {
-    'name' : 'rq',
-    'functions' : L_cov_rq_xi,
-    'data' : GP_DATA_GENERIC + [
+    'name': 'rq',
+    'functions': L_cov_rq_xi,
+    'data': GP_DATA_GENERIC + [
         'real kappa_loc;',
         'real<lower=0> kappa_scale;'
     ],
-    'transformed_data' : None,
-    'parameters' : GP_PARAMETERS_GENERIC + [
+    'transformed_data': None,
+    'parameters': GP_PARAMETERS_GENERIC + [
         'real<lower=0> kappa;'
     ],
-    'kernel_signature' : 'L_cov_rq_xi(__x__, amp, kappa, ls, xi, jitter, n)',
-    'model' : GP_MODEL_GENERIC + [
+    'kernel_signature': 'L_cov_rq_xi(__x__, amp, kappa, ls, xi, jitter, n)',
+    'model': GP_MODEL_GENERIC + [
         'kappa ~ normal(kappa_loc, kappa_scale);'
     ],
-    'args' : GP_ARGS_GENERIC + [
+    'args': GP_ARGS_GENERIC + [
         ('kappa', 1)
     ],
-    'to_sample' : ['amp', 'ls', 'kappa'],
-    'data_priors' : GP_DATA_PRIORS_GENERIC + [
+    'to_sample': ['amp', 'ls', 'kappa'],
+    'data_priors': GP_DATA_PRIORS_GENERIC + [
         'kappa_loc',
         'kappa_scale',
     ],
 }
+
 
 def _apply_warping(_kernel):
     kernel = copy.copy(_kernel)
@@ -167,21 +179,25 @@ def _apply_warping(_kernel):
     ]
     return kernel
 
+
 def _apply(_kernel):
     kernel = copy.copy(_kernel)
     kernel['kernel_signature'] = _default_sig(kernel['kernel_signature'])
     return kernel
 
+
 def _warp_sig(sig):
     return sig.replace('__x__', 'x_warped')
+
 
 def _default_sig(sig):
     return sig.replace('__x__', 'x')
 
+
 AVAILABLE = {
-    'eq' : kernel_eq,
-    'eq_flat' : kernel_eq_flat,
-    'm52' : kernel_m52,
-    'm32' : kernel_m32,
-    'rq' : kernel_rq,
+    'eq': kernel_eq,
+    'eq_flat': kernel_eq_flat,
+    'm52': kernel_m52,
+    'm32': kernel_m32,
+    'rq': kernel_rq,
 }

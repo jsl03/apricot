@@ -3,7 +3,8 @@ import numpy as np
 from scipy.spatial.distance import cdist
 from apricot.core.utils import set_seed
 
-def _maximin(v : np.ndarray, p : int = 2):
+
+def _maximin(v: np.ndarray, p: int = 2):
     """ 'maximin' LHS quality criteria of Morris and Mitchell (1995).
 
     The maximin LHS optimality criterion of [1]_.
@@ -39,23 +40,22 @@ def _maximin(v : np.ndarray, p : int = 2):
         phi += J*D**(-p)
     return -(phi**(1./p))
 
+
 # dict of criteria usable by optimised_lhs
 _CRITERIA = {
     'maximin': _maximin,
 }
 
-def lhs(
-        n : int,
-        d : int,
-        seed : typing.Optional[int] = None,
-):
+
+def lhs(n: int, d: int, seed: typing.Optional[int] = None):
     """ Latin Hypercube Sample design.
 
     Generate n stratified samples in d dimensions by drawing samples from a
     latin hypercube.
 
-    'lhs' is faster than both 'mdurs' and 'optimised_lhs' but has less consistent
-    uniformity properties, especially in higher numbers of dimensions.
+    'lhs' is faster than both 'mdurs' and 'optimised_lhs' but has less
+    consistent uniformity properties, especially in higher numbers of
+    dimensions.
 
     Parameters
     ----------
@@ -79,25 +79,26 @@ def lhs(
     optimised_lhs
     """
     set_seed(seed)
-    slices = np.linspace(0,1,n+1)
-    urnd = np.random.random((n,d))
-    l = slices[:n]
-    u = slices[1:]
-    points = np.empty((n,d), order='C', dtype=np.float64)
-    s = np.empty((n,d), order='C', dtype=np.float64)
+    slices = np.linspace(0, 1, n+1)
+    urnd = np.random.random((n, d))
+    lower = slices[:n]
+    upper = slices[1:]
+    points = np.empty((n, d), order='C', dtype=np.float64)
+    s = np.empty((n, d), order='C', dtype=np.float64)
     for j in range(d):
-        points[:,j] = urnd[:,j] * (u-l) + l
+        points[:, j] = urnd[:, j] * (upper - lower) + lower
         index = np.random.permutation(range(n))
-        s[:,j] = points[index, j]
+        s[:, j] = points[index, j]
     return s
 
+
 def mdurs(
-        n : int,
-        d : int,
-        scale_factor : int = 10,
-        k : int = 2,
-        measure : str = 'cityblock',
-        seed : typing.Optional[int] = None,
+        n: int,
+        d: int,
+        scale_factor: int = 10,
+        k: int = 2,
+        measure: str = 'cityblock',
+        seed: typing.Optional[int] = None,
 ):
     """ Multi-Dimensionally Uniform Random Sample.
 
@@ -167,19 +168,20 @@ def mdurs(
         D = cdist(S, S, metric=measure)
         ret = np.empty(l, dtype=np.float64, order='C')
         for i in range(l):
-            ret[i] = np.mean(np.sort(D[i,:])[1:1 + k])
+            ret[i] = np.mean(np.sort(D[i, :])[1:1 + k])
         S = np.delete(S, np.argmin(ret), axis=0)
     return S
 
+
 def optimised_lhs(
-        n : int,
-        d : int,
-        iterations : int = 100,
-        measure : str = 'euclidean',
-        criteria : typing.Union[str, callable] = 'maximin',
-        options : typing.Optional[dict] = None,
-        seed : typing.Optional[int] = None,
-):
+        n: int,
+        d: int,
+        iterations: int = 100,
+        measure: str = 'euclidean',
+        criteria: typing.Union[str, callable] = 'maximin',
+        options: typing.Optional[dict] = None,
+        seed: typing.Optional[int] = None,
+        ):
     """Optimised Latin Hypercube Sample design.
 
     Pick a sample from a collection of latin hypercube designs maximising a
@@ -219,7 +221,7 @@ def optimised_lhs(
         * 'maximin' - maximin criteria.
         * callable - user supplied function; see below.
 
-    Returns 
+    Returns
     -------
     s : ndarray
         (n,d) array of n sample points in d dimensions. Results are scaled on
@@ -239,30 +241,30 @@ def optimised_lhs(
 
     See Also
     --------
-    scipy.spatial.distance.cdist 
+    scipy.spatial.distance.cdist
     """
     set_seed(seed)
     if options is None:
         options = {}
 
     # precompute slices and slice indices
-    slices = np.linspace(0,1,n+1)
+    slices = np.linspace(0, 1, n+1)
     l = slices[:n]
     u = slices[1:]
     indices_list = np.arange(n)
-    points = np.empty((n,d), order='C', dtype=np.float64)
-    s = np.empty((n,d), order='C', dtype=np.float64)
+    points = np.empty((n, d), order='C', dtype=np.float64)
+    s = np.empty((n, d), order='C', dtype=np.float64)
     tmp = -np.inf
     for i in range(iterations):
 
         # draw the uniform random numbers and set strata
-        urnd = np.random.random((n,d))
+        urnd = np.random.random((n, d))
         for j in range(d):
-            points[:,j] = urnd[:,j] * (u-l) + l
+            points[:, j] = urnd[:, j] * (u-l) + l
 
             # permute the points
             index = np.random.permutation(indices_list)
-            s[:,j] = points[index, j] 
+            s[:, j] = points[index, j]
 
         # evaluate the criteria
         delta = eval_criteria(s, measure, criteria, options)
@@ -274,12 +276,13 @@ def optimised_lhs(
 
     return ret
 
+
 def eval_criteria(
-        arr : np.ndarray,
-        measure : str,
-        criteria : typing.Union[str, callable],
-        options : dict
-):
+        arr: np.ndarray,
+        measure: str,
+        criteria: typing.Union[str, callable],
+        options: dict
+        ):
     """ Evaluate LHS optimality criteria.
 
     Parameters
@@ -301,7 +304,7 @@ def eval_criteria(
     n = arr.shape[0]
     ix, jy = np.tril_indices(n, -1)
     dist = cdist(arr, arr, metric=measure)
-    dist_vector = dist[ix,jy]
+    dist_vector = dist[ix, jy]
 
     if criteria in _CRITERIA:
         return _CRITERIA[criteria](dist_vector, **options)

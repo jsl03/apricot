@@ -1,18 +1,19 @@
 import typing
 
 import numpy as np
-from apricot.core.models import prior
+from apricot.core.models.prior import ls_inv_gamma
 
 Fit_Options_Type_Alias = typing.Optional[typing.Union[str, typing.List[str]]]
 
+
 #TODO: refactor
 def make_pystan_dict(
-        interface_instance : 'apricot.core.models.interface.Interface',
-        x : np.ndarray,
-        y : np.ndarray,
-        jitter : float = 1e-10,
-        fit_options : Fit_Options_Type_Alias = None,
-        seed : typing.Optional[int] = None,
+        interface_instance: 'apricot.core.models.interface.Interface',
+        x: np.ndarray,
+        y: np.ndarray,
+        jitter: float = 1e-10,
+        fit_options: Fit_Options_Type_Alias = None,
+        seed: typing.Optional[int] = None,
 ):
     """ Make the 'data' dictionary to be supplied to the pystan model.
 
@@ -49,20 +50,20 @@ def make_pystan_dict(
 
     n, d = x.shape
     data = {
-        'x':x,
-        'y':y,
-        'n':n,
-        'd':d,
-        'jitter':jitter,
+        'x': x,
+        'y': y,
+        'n': n,
+        'd': d,
+        'jitter': jitter,
     }
 
-    # expq_flat does not have hyperparameter priors
-    if interface_instance.kernel_type != 'expq_flat':
+    # eq_flat does not have hyperparameter priors
+    if interface_instance.kernel_type != 'eq_flat':
         # lengthscales use inverse gamma hyperprior
-        ls_alpha, ls_beta = prior.ls_inv_gamma.ls_inv_gamma_prior(
+        ls_alpha, ls_beta = ls_inv_gamma.ls_inv_gamma_prior(
             x,
             fit_options,
-            seed = seed
+            seed=seed
         )
         data['ls_alpha'] = ls_alpha
         data['ls_beta'] = ls_beta
@@ -104,10 +105,11 @@ def make_pystan_dict(
 
     return data
 
+
 def get_init(
-        interface_instance : 'apricot.core.models.interface.Interface',
-        stan_dict : dict,
-        init : typing.Optional[typing.Union[dict, typing.List[str], str]],
+        interface_instance: 'apricot.core.models.interface.Interface',
+        stan_dict: dict,
+        init: typing.Optional[typing.Union[dict, typing.List[str], str]],
 ):
     """ Invoke various initialisation methods for the sampler.
 
@@ -154,12 +156,15 @@ def get_init(
         else:
             return _init_from_str(init)
     # if we fall through to here, init is not a string or a dictionary
-    raise TypeError('Unable to parse init option of type "{0}".'.format(type(init)))
+    raise TypeError(
+        'Unable to parse init option of type "{0}".'.format(type(init))
+    )
+
 
 #TODO refactor
 def _init_from_data(
-        interface_instance : 'apricot.core.models.interface.Interface',
-        stan_dict : dict
+        interface_instance: 'apricot.core.models.interface.Interface',
+        stan_dict: dict
 ):
     """ Initialise from data.
 
@@ -180,28 +185,30 @@ def _init_from_data(
     x = stan_dict['x']
     y = stan_dict['y']
     d = stan_dict['d']
-    init = {'ls' : np.std(x, axis=0)}
+    init = {'ls': np.std(x, axis=0)}
     init['amp'] = np.std(y)
     if interface_instance.noise_type[0] == 'infer':
         init['xi'] = np.std(y) / 10.0
     if interface_instance.mean_function_type == 'linear':
         init['beta'] = np.zeros(d+1, dtype=np.float64)
     if interface_instance.warping:
-        if model.warping == 'sigmoid':
+        if interface_instance.warping == 'sigmoid':
             init['alpha_warp'] = np.full(d, 5.0)
             init['beta_warp'] = np.full(d, 5.0)
-        if model.warping == 'linear':
+        if interface_instance.warping == 'linear':
             init['alpha_warp'] = np.ones(d, dtype=np.float64)
             init['beta_warp'] = np.ones(d, dtype=np.float64)
     return init
 
-def _init_from_str(init_str : str):
+
+def _init_from_str(init_str: str):
     options = {
-        'random' : 'random',
-        '0' : 0,
-        'zero' : 0,
+        'random': 'random',
+        '0': 0,
+        'zero': 0,
     }
     try:
         return options[init_str]
     except KeyError:
-        raise ValueError('Could not find init option matching "{0}".'.format(init)) from None
+        raise ValueError('Could not find init option matching "{0}".'
+                         .format(init_str)) from None

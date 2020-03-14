@@ -17,7 +17,8 @@ _MODEL_CACHE = _ROOTDIR + '/cache/'
 # TODO: how does mypy check for inheritance?
 Model_Part_Type = build.components.StanModelPart
 
-def memo(func : callable):
+
+def memo(func: callable):
     """ Simple session cache decorator.
 
     Prevents repeatedly unpickling the same model over and over.
@@ -29,11 +30,12 @@ def memo(func : callable):
         return memory[string]
     return wrapper
 
+
 def load(
-        kernel_part : Model_Part_Type,
-        mean_part : Model_Part_Type,
-        noise_part : Model_Part_Type,
-        warp : bool,
+        kernel_part: Model_Part_Type,
+        mean_part: Model_Part_Type,
+        noise_part: Model_Part_Type,
+        warp: bool,
 ):
     filename = get_filename(kernel_part, mean_part, noise_part, warp)
     if os.path.isfile(filename):
@@ -41,11 +43,12 @@ def load(
     else:
         return compile_model(kernel_part, mean_part, noise_part, filename)
 
+
 def get_filename(
-        kernel_part : Model_Part_Type,
-        mean_part : Model_Part_Type,
-        noise_part : Model_Part_Type,
-        warp : bool,
+        kernel_part: Model_Part_Type,
+        mean_part: Model_Part_Type,
+        noise_part: Model_Part_Type,
+        warp: bool,
 ):
     fname = '_'.join([
         kernel_part.filename_component,
@@ -56,16 +59,18 @@ def get_filename(
         fname += ('_warped')
     return _MODEL_CACHE + fname + '.pkl'
 
+
 @memo
-def load_from_pickle(filename : str):
+def load_from_pickle(filename: str):
     """Load a permanently cached pystan model """
     return pickle.load(open(filename, 'rb'))
 
+
 def compile_model(
-        kernel_part : Model_Part_Type,
-        mean_part : Model_Part_Type,
-        noise_part : Model_Part_Type,
-        filename : str,
+        kernel_part: Model_Part_Type,
+        mean_part: Model_Part_Type,
+        noise_part: Model_Part_Type,
+        filename: str,
 ):
     """ Assemble model code from parts, compile it, and save the pickle. """
     to_cache = prompt_cache()
@@ -76,8 +81,9 @@ def compile_model(
             pickle.dump(compiled_model, destination)
     return compiled_model
 
+
 #TODO: add timeout
-def prompt_cache(attempts : int = 0):
+def prompt_cache(attempts: int = 0):
     """ Ask the user if they want to cache the model. """
     attempts += 1
     if attempts > 5:
@@ -91,4 +97,4 @@ def prompt_cache(attempts : int = 0):
         return False
     else:
         print("Answer either (y)es, (n)o, or (c)ancel.")
-        return prompt_cache(attempts = attempts)
+        return prompt_cache(attempts=attempts)

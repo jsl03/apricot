@@ -1,14 +1,14 @@
 import typing
-import functools
 import re
 import numpy as np
 
 from apricot.core import utils
 
+
 def slice_in_order(
-        array : np.ndarray,
-        target : str,
-        colnames : typing.List[str],
+        array: np.ndarray,
+        target: str,
+        colnames: typing.List[str],
 ):
     """ Slice target columns of array corresponding to colnames.
 
@@ -21,21 +21,24 @@ def slice_in_order(
     else:
         return None
 
-def match(s : str, target : str):
+
+def match(s: str, target: str):
     """ Strips off any brackets from string x and checks if it is equivalent
     to string target. """
     s_stripped = re.sub('\[.*\]', '', s)
     return s_stripped == target
 
-def param_to_2dfarray(arr : np.ndarray):
+
+def param_to_2dfarray(arr: np.ndarray):
     """ Convert not necessarily 1D array to 2D F-ordered array. """
     return np.atleast_1d(arr).reshape(1, -1, order='F')
 
+
 @utils.maybe
 def hmc_glue(
-        interface : 'apricot.core.models.interface.Interface',
-        samples : np.ndarray,
-        info : dict,
+        interface: 'apricot.core.models.interface.Interface',
+        samples: np.ndarray,
+        info: dict,
 ):
     """ Formatting for hyperparameters obtained via Stan using HMC.
 
@@ -57,15 +60,21 @@ def hmc_glue(
         dictionary of named hyperparameter samples.
     """
 
-    required_parameters = interface.theta + interface.beta + interface.xi + ['lp__']
+    required = (
+        interface.theta +
+        interface.beta +
+        interface.xi +
+        ['lp__']
+    )
     hyperparameters = {}
-    
-    # iterate over the parameters required by the model
-    for parameter in required_parameters:
-        hyperparameters[parameter] = slice_in_order(samples, parameter, info['colnames'])
-    
-    # if the model is deterministic, manually add xi (which is zero)
-    if (interface.noise_type[0] == 'deterministic') & ('xi' in required_parameters):
+    for parameter in required:
+        hyperparameters[parameter] = slice_in_order(
+            samples,
+            parameter,
+            info['colnames']
+        )
+    # if the model is deterministic, manually add xi
+    if (interface.noise_type[0] == 'deterministic') & ('xi' in required):
         hyperparameters['xi'] = np.full(
             (samples.shape[0], 1),
             interface.noise_type[1],
@@ -74,11 +83,12 @@ def hmc_glue(
         )
     return hyperparameters
 
+
 @utils.maybe
 def mle_glue(
-        interface : 'apricot.core.models.interface.Interface',
-        opt_result : typing.Dict[str, typing.Any],
-        info : dict,
+        interface: 'apricot.core.models.interface.Interface',
+        opt_result: typing.Dict[str, typing.Any],
+        info: dict,
 ):
     """ Formatting for hyperparameters obtained via Stan using MLE.
 
@@ -96,20 +106,23 @@ def mle_glue(
     hyperparameters : dict
         Dictionary of (appropriately formatted) named hyperparameters.
     """
-
-    required_parameters = interface.theta + interface.beta + interface.xi
+    required = (
+        interface.theta +
+        interface.beta +
+        interface.xi
+    )
     hyperparameters = {}
-    
-    for parameter in required_parameters:
+    for parameter in required:
         if parameter in opt_result:
-            hyperparameters[parameter] = param_to_2dfarray(opt_result[parameter])
-            
-    # if the model is deterministic, we need to manually add xi
-    if (interface.noise_type[0] == 'deterministic') & ('xi' in required_parameters):
+            hyperparameters[parameter] = param_to_2dfarray(
+                opt_result[parameter]
+            )
+    # if the model is deterministic, manually add xi
+    if (interface.noise_type[0] == 'deterministic') & ('xi' in required):
         hyperparameters['xi'] = np.full(
             (1, 1),
             interface.noise_type[1],
             order='F',
             dtype=np.float64
-        )    
+        )
     return hyperparameters

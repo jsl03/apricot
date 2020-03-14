@@ -1,8 +1,8 @@
 from apricot.core.models.build.components import StanModelPart
 
-core = {
-    'name' : None,
-    'data' : [
+_CORE = {
+    'name': None,
+    'data': [
         'int<lower=1> n;',
         'int<lower=1> d;',
         'vector[d] x[n];',
@@ -16,7 +16,7 @@ core = {
     'model': 'y ~ multi_normal_cholesky(mu, L);'
 }
 
-def _get_core():
-    return StanModelPart(**core)
 
+def _get_core():
+    return StanModelPart(**_CORE)
 

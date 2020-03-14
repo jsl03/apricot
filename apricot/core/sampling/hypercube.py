@@ -11,7 +11,8 @@ from apricot.core.sampling.factorial import factorial
 from apricot.core.utils import _force_f_array
 from apricot.core.utils import set_seed
 
-def urandom(n : int, d : int, seed : typing.Optional[int] = None):
+
+def urandom(n: int, d: int, seed: typing.Optional[int] = None):
     """ Uniform random sample.
 
     Parameters
@@ -30,26 +31,29 @@ def urandom(n : int, d : int, seed : typing.Optional[int] = None):
     set_seed(seed)
     return np.random.random((n, d))
 
+
 # valid methods for obtaining a sample on [0,1]^d
 _METHODS = {
-    'urandom': urandom, 
-    'lhs':lhs,
-    'olhs':optimised_lhs,
-    'mdurs':mdurs,
-    'sobol':sobol,
-    'randomised_sobol':sobol_scatter,
-    'factorial':factorial,
+    'urandom': urandom,
+    'lhs': lhs,
+    'olhs': optimised_lhs,
+    'mdurs': mdurs,
+    'sobol': sobol,
+    'randomised_sobol': sobol_scatter,
+    'factorial': factorial,
 }
+
 
 def show_methods():
     return (set(_METHODS.keys()))
 
+
 def sample_hypercube(
-        n : int,
-        d : int,
-        method : str,
-        seed : typing.Optional[int] = None,
-        options : typing.Optional[dict] = None,
+        n: int,
+        d: int,
+        method: str,
+        seed: typing.Optional[int] = None,
+        options: typing.Optional[dict] = None,
 ):
     """ Unified interface to obtaining uniform random variables on [0,1]^d.
 
@@ -71,7 +75,7 @@ def sample_hypercube(
             'olhs', 'mdurs' or 'sobol'.
         * 'olhs' : Optimised Latin hypercube sample. Generates many Latin-
             Hypercube designs and picks the best according to a specified
-            criteria. Criteria defaults to maximin criterion of [1]_. 
+            criteria. Criteria defaults to maximin criterion of [1]_.
         * 'mdurs' : Multi-dimensionally uniform random sample [2]_. 'mdurs' is
             expensive but is both "random" and possesses good space filling
             properties. Not recommended for n > 50 unless run time is not a
@@ -120,5 +124,5 @@ def sample_hypercube(
         options = {}
     if method not in _METHODS:
         raise ValueError('method must be one of {methods}.'.
-                         format(methods = set(_METHODS.keys())))
+                         format(methods=set(_METHODS.keys())))
     return _force_f_array(_METHODS[method](n, d, seed=seed, **options))

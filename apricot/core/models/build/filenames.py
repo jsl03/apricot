@@ -5,7 +5,9 @@ def mean_part_filename(mean_type):
     elif mean_type == 'zero':
         return 'zm'
     else:
-        raise RuntimeError('No filename part for mean function "{0}"'.format(mean_type))
+        raise RuntimeError('No filename part for mean function "{0}"'.
+                           format(mean_type))
+
 
 def noise_part_filename(noise_type):
     """Assign noise filename component from noise type"""
@@ -14,5 +16,5 @@ def noise_part_filename(noise_type):
     elif noise_type == 'deterministic':
         return 'dxi'
     else:
-        raise RuntimeError('No filename part for noise type "{0}"'.format(noise_type))
-
+        raise RuntimeError('No filename part for noise type "{0}"'.
+                           format(noise_type))

@@ -8,12 +8,15 @@ from scipy import optimize
 
 from apricot.core import utils
 
+
 def ls_inv_gamma_prior(
-        x : np.ndarray,
-        options : typing.Optional[typing.Union[typing.List[str], str]] = None,
-        seed : typing.Optional[int] = None,
+        x: np.ndarray,
+        options: typing.Optional[typing.Union[typing.List[str], str]] = None,
+        gridsize: int = 10000,
+        max_attempts: int = 3,
+        seed: typing.Optional[int] = None,
 ):
-    """ Inverse Gamma lengthscale hyperprior
+    """ Inverse Gamma lengthscale hyperprior.
 
     Calculates the parameters of an inverse gamma distribution, ls_alpha and
     ls_beta given, data, x, such that a specified amount of probability mass
@@ -25,13 +28,16 @@ def ls_inv_gamma_prior(
     Parameters
     ----------
     x : ndarray
-        (n,d) array of sample points.
+        (n, d) array of sample points.
     options : {None, str, list of str} optional
         Fit options to fine-tune the behaviour of the prior distribution. If
         a single string is supplied, the same options will be used for each
         input dimension. If a length d list of strings is provided, options
         corresponding to the respective element of the list will be used for
-        each dimension of the index.
+        each dimension of the index:
+        * None : defaults to 'nonlinear'.
+        * 'nonlinear' : 0.01 prior mass mass below minimum spacing and above 1 
+        * 'linear' : increases the amount of probability mass permissible > 1.
     seed : {None, int}
         Seed for numpy's random state. If None, an arbitrary seed will be used.
         Default = None.
@@ -45,7 +51,7 @@ def ls_inv_gamma_prior(
 
     Notes
     -----
-    More options to be added. 
+    More options to be added.
     """
     d = x.shape[1]
     delta_min = min_spacing(x)
@@ -53,10 +59,20 @@ def ls_inv_gamma_prior(
     ls_alpha = np.empty(d)
     ls_beta = np.empty(d)
     for dim, option in enumerate(options_formatted):
-        ls_alpha[dim], ls_beta[dim] = solve_inv_gamma(*parse_option(delta_min[dim], option), seed=seed)
+        lb, ub, lb_tol, ub_tol = parse_option(delta_min[dim], option)
+        ls_alpha[dim], ls_beta[dim] = solve_inv_gamma(
+                lb,
+                ub,
+                lb_tol,
+                ub_tol,
+                gridsize=gridsize,
+                attempts=max_attempts,
+                seed=seed,
+        )
     return ls_alpha, ls_beta
 
-def min_spacing(x : np.ndarray):
+
+def min_spacing(x: np.ndarray):
     """Get the minimum spacing between values for each column of x
 
     Parameters
@@ -71,22 +87,24 @@ def min_spacing(x : np.ndarray):
         d dimensions in x
 
     """
-    n,d = x.shape
+    n, d = x.shape
     delta_min = np.empty(d)
     for i in range(d):
-        delta = np.abs(np.subtract.outer(x[:,i], x[:,i]))
+        delta = np.abs(np.subtract.outer(x[:, i], x[:, i]))
         delta_masked = np.ma.masked_array(delta, mask=np.eye(n))
         delta_min[i] = np.min(delta_masked)
     return delta_min
 
-def inv_gamma_cdf(x : float, alpha : float, beta : float):
+
+def inv_gamma_cdf(x: float, alpha: float, beta: float):
     """ Inverse gamma distribution CDF. """
     if x <= 0:
         return 0.0
     else:
         return special.gammaincc(alpha, beta/x)
 
-def inv_gamma_pdf(x : float, alpha : float, beta : float):
+
+def inv_gamma_pdf(x: float, alpha: float, beta: float):
     """ Inverse gamma distribution PDF. """
     if x <= 0:
         return 0.0
@@ -94,12 +112,13 @@ def inv_gamma_pdf(x : float, alpha : float, beta : float):
         y=((beta**alpha)/special.gamma(alpha))*x**(-(alpha+1.))*np.exp(-beta*(1./x))
         return y
 
+
 def inv_gamma_tail(
-        lower : float,
-        upper : float,
-        lower_tol : float,
-        upper_tol : float,
-        theta : typing.Tuple[float, float],
+        lower: float,
+        upper: float,
+        lower_tol: float,
+        upper_tol: float,
+        theta: typing.Tuple[float, float],
 ):
     """ Inverse gamma tail probabilities in excess of tolerances.
 
@@ -138,11 +157,12 @@ def inv_gamma_tail(
     upper = (1.0 - inv_gamma_cdf(upper, ls_alpha, ls_beta)) - upper_tol
     return lower, upper
 
+
 def create_objective(
-        lower : float,
-        upper : float,
-        lower_tol : float,
-        upper_tol : float
+        lower: float,
+        upper: float,
+        lower_tol: float,
+        upper_tol: float
 ):
     """ Objective function for solve_inv_gamma.
 
@@ -168,14 +188,15 @@ def create_objective(
     """
     return functools.partial(inv_gamma_tail, lower, upper, lower_tol, upper_tol)
 
+
 def solve_inv_gamma(
-        lb : float,
-        ub : float,
-        lb_tol : float,
-        ub_tol : float,
-        gridsize : int = 10000,
-        max_attempts : int = 3,
-        seed : typing.Optional[int] = None,
+        lb: float,
+        ub: float,
+        lb_tol: float,
+        ub_tol: float,
+        gridsize: int = 10000,
+        max_attempts: int = 3,
+        seed: typing.Optional[int] = None,
 ):
     """ Solve system of equations to find appropriate inverse gamma parameters.
 
@@ -214,7 +235,7 @@ def solve_inv_gamma(
     beta : float
         Inverse gamma parameter beta.
     """
-    set_seed(seed)
+    utils.set_seed(seed)
     if lb > ub:
         raise ValueError('Lower bound cannot be greater than upper bound.')
     obj = create_objective(lb, ub, lb_tol, ub_tol)
@@ -226,17 +247,18 @@ def solve_inv_gamma(
         theta_grid = np.random.random((gridsize, 2))*scales
         # objective function is not vectorised, so run in loop...
         for i in range(gridsize):
-            obj_grid[i,:] = obj(theta_grid[i,:])
+            obj_grid[i, :] = obj(theta_grid[i,:])
         obj_grid_norm = np.sqrt(np.sum(obj_grid**2, axis=1))
         theta0 = theta_grid[obj_grid_norm.argmin(), :]
-        theta_sol= optimize.root(obj, theta0)
+        theta_sol = optimize.root(obj, theta0)
         converged = theta_sol['success']
         if attempts > max_attempts:
             raise RuntimeError('Maximum number of attempts exceeded without convergence.')
     return theta_sol['x'][0], theta_sol['x'][1]
 
+
 def format_options(
-        options : typing.Optional[typing.Union[typing.List[str], str]],
+        options: typing.Optional[typing.Union[typing.List[str], str]],
         d: int
 ):
     """ Ensure 'options' is a list of length d.
@@ -251,7 +273,8 @@ def format_options(
     else:
         return options
 
-def parse_option(delta_min : float, option : str):
+
+def parse_option(delta_min: float, option: str):
     """ Parse options.
 
     Parse requested option and designate lb, ub, lb_tol and ub_tol.

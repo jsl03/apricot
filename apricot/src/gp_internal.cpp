@@ -14,7 +14,7 @@
 #include "gp_m32_kernel.h"
 #include "gp_rq_kernel.h"
 
-/* Pybind */ 
+/* Pybind stuff */ 
 
 namespace py = pybind11;
 
