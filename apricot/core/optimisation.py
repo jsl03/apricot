@@ -167,7 +167,7 @@ def _check_grid_shape_1d(xgrid: np.ndarray):
         return xgrid.reshape(-1, 1, order='F')
     elif xgrid.squeeze().ndim == 1:
         return _check_grid_shape_1d(xgrid.squeeze())
-    # TODO fix 
+    # TODO fix
     else:
         raise ValueError
 

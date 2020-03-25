@@ -17,8 +17,8 @@ class Interface(object):
     def __init__(
             self,
             kernel: str,
-            mean_function: typing.Optional[str, int] = None,
-            noise: typing.Optional[str, float] = None,
+            mean_function: typing.Optional[typing.Union[str, int]] = None,
+            noise: typing.Optional[typing.Union[str, float]] = None,
             warping: typing.Optional[str] = None,
     ):
         """ apricot interface to a pyStan GP model

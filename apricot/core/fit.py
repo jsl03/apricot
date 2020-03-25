@@ -4,6 +4,7 @@ import numpy as np
 from apricot.core import emulator
 from apricot.core.models import interface, glue
 
+
 def fit(
         x: np.ndarray,
         y: np.ndarray,
@@ -16,7 +17,8 @@ def fit(
     """ Fit a Gaussian Process emulator to data.
 
     Given inputs, x, and outputs, y, infer the hyperparameters of a GP
-    emulator with kernel 'kernel', mean function 'mean', and noise type 'noise'.
+    emulator with kernel 'kernel', mean function 'mean', and noise type
+    'noise'.
 
     Valid fit methods are 'hmc', for Hamiltonian Monte-Carlo sampling from the
     posterior distribution of the model hyperparameters, or 'mle' for maximum
@@ -87,6 +89,7 @@ def fit(
     else:
         raise ValueError("Unrecognised fit method: '{0}'.".format(method))
 
+
 def _fit_hmc(
         interface_instance: interface.Interface,
         x: np.ndarray,
@@ -116,8 +119,9 @@ def _fit_hmc(
     jitter : float, optional
         Stability jitter. Default = 1e-10.
     fit_options : string or list of string, optional
-        Specify either a list of 'linear' or 'nonlinear' for each input dimension,
-        or a single string to apply the supplied option to all input dimensions.
+        Specify either a list of 'linear' or 'nonlinear' for each input
+        dimension, or a single string to apply the supplied option to all input
+        dimensions.
     samples : int, optional
         Number of samples to draw from the posterior (accounting for the number
         of chains, warmup and thinning). Default = 2000.
@@ -166,6 +170,7 @@ def _fit_hmc(
         jitter=jitter
     )
     return emulator_instance
+
 
 def _fit_mle(
         interface_instance: interface.Interface,

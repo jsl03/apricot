@@ -1,4 +1,3 @@
-import typing
 import copy
 
 from apricot.core import exceptions
@@ -77,16 +76,16 @@ kernel_eq = {
 
 
 kernel_eq_flat = {
-    'name' : 'eq_flat',
-    'functions' : L_cov_eq_xi,
-    'data' : [],
-    'transformed_data' : None,
-    'parameters' : GP_PARAMETERS_GENERIC,
-    'kernel_signature' : 'L_cov_eq_xi(__x__, amp, ls, xi, jitter, n)',
-    'model' : [],
-    'args' : GP_ARGS_GENERIC,
-    'to_sample' : ['amp', 'ls'],
-    'data_priors' : [],
+    'name': 'eq_flat',
+    'functions': L_cov_eq_xi,
+    'data': [],
+    'transformed_data': None,
+    'parameters': GP_PARAMETERS_GENERIC,
+    'kernel_signature': 'L_cov_eq_xi(__x__, amp, ls, xi, jitter, n)',
+    'model': [],
+    'args': GP_ARGS_GENERIC,
+    'to_sample': ['amp', 'ls'],
+    'data_priors': [],
 }
 
 

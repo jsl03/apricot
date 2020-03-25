@@ -3,7 +3,9 @@ from setuptools.command.build_ext import build_ext
 import sys
 import setuptools
 
+
 __version__ = '0.9'
+
 
 class get_pybind_include(object):
     """ Helper class to determine the pybind11 include path.
@@ -20,6 +22,7 @@ class get_pybind_include(object):
         import pybind11
         return pybind11.get_include(self.user)
 
+
 ext_modules = [
     Extension(
         'apricot.core.gp_internal',
@@ -33,6 +36,7 @@ ext_modules = [
         language='c++'
     ),
 ]
+
 
 def has_flag(compiler, flagname):
     """Return a boolean indicating whether a flag name is supported on

@@ -4,7 +4,8 @@ from apricot.core.models.build import mean_parts
 from apricot.core.models.build import noise_parts
 
 
-#TODO: this is broken: doesnt parse anything
+# TODO: this is broken: doesnt parse anything. Need to fix so apricot.Emulator
+# can use it, too.
 def parse_kernel(kernel_type: str):
     """Parse requested kernel option."""
     return kernel_type

@@ -31,7 +31,8 @@ def _format_input(xstar: np.ndarray, d: int):
 
     Raises
     ------
-    exceptions.ShapeError : if input array shape is not compatible with the model.
+    exceptions.ShapeError : if input array shape is not compatible with the
+        model.
     """
     xstar = np.atleast_1d(xstar)
     if xstar.ndim == 1:
@@ -82,11 +83,11 @@ def defined_on_index(method: callable):
 # TODO: make kernel naming consistent with internal (use core.models.parse)
 def _assign_internal(kernel_type):
     _AVAILABLE = {
-        'eq' : gp_internal.GpEqKernel,
-        'm52' : gp_internal.GpM52Kernel,
-        'm32' : gp_internal.GpM32Kernel,
-        'rq' : gp_internal.GpRqKernel
-    }  
+        'eq': gp_internal.GpEqKernel,
+        'm52': gp_internal.GpM52Kernel,
+        'm32': gp_internal.GpM32Kernel,
+        'rq': gp_internal.GpRqKernel
+    }
     return _AVAILABLE[kernel_type]
 
 
@@ -213,7 +214,7 @@ class Emulator:
             the square root if designating a variance. Default = 1e-10.
         """
 
-        #pylint: disable=too-many-arguments
+        # pylint: disable=too-many-arguments
 
         self._x = utils._force_f_array(x)
         self._y = utils._force_f_array(y)
@@ -223,29 +224,29 @@ class Emulator:
         self.hyperparameters = hyperparameters
 
         try:
-            self._amp_sq = hyperparameters['amp']**2
-            self._ls_sq = hyperparameters['ls']**2
-            self._sigma0 = hyperparameters['xi']**2
+            self._amp = hyperparameters['amp']
+            self._ls = hyperparameters['ls']
+            self._sigma0 = hyperparameters['xi']
 
         except KeyError as missing_key:
             raise exceptions.MissingParameterError(str(missing_key)) from None
 
         # stability jitter
-        self._delta = jitter**2
+        self._delta = jitter
 
-        # TODO fix:
+        # TODO fix this
         internal = _assign_internal(self.kernel_type)
         self._gp = internal(
             self._x,
             self._y,
-            self._amp_sq,
-            self._ls_sq,
+            self._amp,
+            self._ls,
             self._sigma0,
             self._delta,
         )
 
         self.n, self.d = x.shape
-        self.m = self._amp_sq.shape[0]
+        self.m = self._amp.shape[0]
 
         # guess the fit method from m if not explicitly provided
         if info is None:
@@ -466,8 +467,9 @@ class Emulator:
         Returns
         -------
         ucb : ndarray
-            (n,) array containing the upper confidence bound function at each of
-            the n points in xstar, integrated over the hyperparameter samples
+            (n,) array containing the upper confidence bound function at each
+            of the n points in xstar, integrated over the hyperparameter
+            samples.
 
         Notes
         -----
@@ -525,14 +527,14 @@ class Emulator:
         ----------
         mode : {'min', 'max'}, optional
             If mode is 'min', attempt to find the global minimum of the
-            predictive distribution. If mode is 'max', attempt to find the global
-            maximum. Default = 'min'.
+            predictive distribution. If mode is 'max', attempt to find the
+            global maximum. Default = 'min'.
         x0 : {None, ndarray}, optional
-            (d,) array representing the initialisation point for the optimisation
-            routine. Since a gradient based optimisation.optimiser is used, a good starting
-            point helps to avoid convergence to a local optimum. If None, a
-            preliminary grid search will be performed to determine a suitable
-            initialisation point. Default = None.
+            (d,) array representing the initialisation point for the
+            optimisation routine. Since a gradient based optimiser is used,
+            a good starting point helps to avoid convergence to a local
+            optimum. If None, a preliminary grid search will be performed
+            to determine a suitable initialisation point. Default = None.
         grid : {None, ndarray}, optional
             (n,d) array of n points at which to perform the preliminary grid
             search to identify x0. If None, a grid will be generated. Default
@@ -552,14 +554,19 @@ class Emulator:
         """
         _mode = mode.lower()
         if _mode == 'min':
-            f = self._gp.E
-            f_jac = self._gp.E_jac
+            obj = self._gp.E
+            obj_jac = self._gp.E_jac
         elif _mode == 'max':
-            # need wrapper to make E negative in this case
-            f = lambda x: -self._gp.E(x)
-            # make both E and it's Jacobian negative
-            make_both_negative = lambda f, jac: (-f, -jac)
-            f_jac = lambda x: make_both_negative(*self._gp.E_jac(x))
+            # make objective and jacobian negative if searching for the max
+            def obj(x):
+                return -self._gp.E(x)
+
+            def make_both_negative(f, jac):
+                return (-f, -jac)
+
+            def obj_jac(x):
+                return make_both_negative(*self._gp.E_jac(x))
+
         else:
             raise ValueError("Mode must be either 'min' or 'max'.")
         opts = {
@@ -570,9 +577,11 @@ class Emulator:
             'grid_options': grid_options,
             'seed': seed,
         }
-        result = optimisation.optimise(f, f_jac, self.d, **opts)
+        result = optimisation.optimise(obj, obj_jac, self.d, **opts)
+
         if _mode == 'max':
             result['xprime'] = -result['xprime']
+
         return result
 
     def next_ei(
@@ -593,11 +602,11 @@ class Emulator:
         Parameters
         ----------
         x0 : {None, ndarray}, optional
-            (d,) array representing the initialisation point for the optimisation
-            routine. Since a gradient based optimisation.optimiser is used, a good starting
-            point helps to avoid convergence to a local optimum. If None, a
-            preliminary grid search will be performed to determine a suitable
-            initialisation point. Default = None.
+            (d,) array representing the initialisation point for the
+            optimisation routine. Since a gradient based optimisation.optimiser
+            is used, a good starting point helps to avoid convergence to a
+            local optimum. If None, a preliminary grid search will be performed
+            to determine a suitable initialisation point. Default = None.
         grid : {None, ndarray}, optional
             (n,d) array of n points at which to perform the preliminary grid
             search to identify x0. If None, a grid will be generated. Default
@@ -607,8 +616,8 @@ class Emulator:
             grid search. If None, use 100*d. Default = None.
         grid_method : str, optional
             String specifying the experimental design strategy used to
-            construct the grid of points used to conduct the grid search. If None,
-            defaults to 'lhs'. Default = None.
+            construct the grid of points used to conduct the grid search. If
+            None, defaults to 'lhs'. Default = None.
         grid_options : dict, optional
             Dictionary of additional options to pass to grid_method. Default
             = None.
@@ -656,11 +665,11 @@ class Emulator:
         Parameters
         ----------
         x0 : {None, ndarray}, optional
-            (d,) array representing the initialisation point for the optimisation
-            routine. Since a gradient based optimisation.optimiser is used, a good starting
-            point helps to avoid convergence to a local optimum. If None, a
-            preliminary grid search will be performed to determine a suitable
-            initialisation point. Default = None.
+            (d,) array representing the initialisation point for the
+            optimisation routine. Since a gradient based optimiser is used, a
+            good starting point helps to avoid convergence to a local optimum.
+            If None, a preliminary grid search will be performed to determine a
+            suitable initialisation point. Default = None.
         grid : {None, ndarray}, optional
             (n,d) array of n points at which to perform the preliminary grid
             search to identify x0. If None, a grid will be generated. Default
@@ -670,8 +679,8 @@ class Emulator:
             grid search. If None, use 100*d. Default = None.
         grid_method : str, optional
             String specifying the experimental design strategy used to
-            construct the grid of points used to conduct the grid search. If None,
-            defaults to 'lhs'. Default = None.
+            construct the grid of points used to conduct the grid search. If
+            None, defaults to 'lhs'. Default = None.
         grid_options : dict, optional
             Dictionary of additional options to pass to grid_method. Default
             = None.
@@ -680,7 +689,7 @@ class Emulator:
 
         See Also
         --------
-        px 
+        px
         """
 
         f = self._gp.px
@@ -695,7 +704,7 @@ class Emulator:
         }
         return optimisation.optimise(f, f_jac, self.d, **opts)
 
-    def next_ucb( 
+    def next_ucb(
             self,
             beta: float,
             x0: typing.Optional[np.ndarray] = None,
@@ -705,7 +714,7 @@ class Emulator:
             grid_options: typing.Optional[dict] = None,
             seed: typing.Optional[int] = None,
     ):
-        """ Get next point using the upper confidence bound acquisition function.
+        """ Get next point using upper confidence bound
 
         Use numerical optimisation to estimate the global minimum of the
         (negative) Upper Confidence Bound (UCB) acquisition function [1]_,
@@ -716,11 +725,11 @@ class Emulator:
         beta : float
             Parameter beta for the upper confidence bound acquisition function
         x0 : {None, ndarray}, optional
-            (d,) array representing the initialisation point for the optimisation
-            routine. Since a gradient based optimisation.optimiser is used, a good starting
-            point helps to avoid convergence to a local optimum. If None, a
-            preliminary grid search will be performed to determine a suitable
-            initialisation point. Default = None.
+            (d,) array representing the initialisation point for the
+            optimisation routine. Since a gradient based optimiser is used, a
+            good starting point helps to avoid convergence to a local optimum.
+            If None, a preliminary grid search will be performed to determine a
+            suitable initialisation point. Default = None.
         grid : {None, ndarray}, optional
             (n,d) array of n points at which to perform the preliminary grid
             search to identify x0. If None, a grid will be generated. Default
@@ -730,8 +739,8 @@ class Emulator:
             grid search. If None, use 100*d. Default = None.
         grid_method : str, optional
             String specifying the experimental design strategy used to
-            construct the grid of points used to conduct the grid search. If None,
-            defaults to 'lhs'. Default = None.
+            construct the grid of points used to conduct the grid search. If
+            None, defaults to 'lhs'. Default = None.
         grid_options : dict, optional
             Dictionary of additional options to pass to grid_method. Default
             = None.
@@ -749,9 +758,13 @@ class Emulator:
         experimental design. arXiv preprint arXiv:0912.3995.
         """
 
-        # partially apply beta to get objective function and derivatives
-        f = lambda x: self._gp.ucb(x, float(beta))
-        f_jac = lambda x: self._gp.ucb_jac(x, float(beta))
+        # closures define objective function and jacobian with desired beta
+        def obj(x):
+            return self._gp.ucb(x, float(beta))
+
+        def obj_jac(x):
+            return self._gp.ucb_jac(x, float(beta))
+
         opts = {
             'x0': x0,
             'grid': grid,
@@ -760,7 +773,7 @@ class Emulator:
             'grid_options': grid_options,
             'seed': seed,
         }
-        return optimisation.optimise(f, f_jac, self.d, **opts)
+        return optimisation.optimise(obj, obj_jac, self.d, **opts)
 
     def sobol1(
             self,
@@ -792,15 +805,15 @@ class Emulator:
         """
 
         X = sampling.sample_hypercube(n, 2*self.d, method=method, seed=seed)
-        A = X[:,:self.d]
-        B = X[:,self.d:]
+        A = X[:, :self.d]
+        B = X[:, self.d:]
         f_A = self.expectation(A)
         f_B = self.expectation(B)
         V_i = np.empty(self.d)
         f_all = [f_A, f_B]
         for i in range(self.d):
             AB = A.copy()
-            AB[:,i] = B[:,i]
+            AB[:, i] = B[:, i]
             f_i = self.expectation(AB)
             V_i[i] = np.mean(f_B * (f_i - f_A))  # local variance
             f_all.append(f_i)
@@ -816,7 +829,7 @@ class Emulator:
                 self.info
             )
         else:
-            raise RuntimeError('method is only valid for models fit using HMC.')
+            raise RuntimeError('Method only valid for models fit using HMC.')
 
     def plot_divergences(self):
         """ Parallel co-ordinates plot of sampler behaviour
@@ -829,4 +842,4 @@ class Emulator:
                 self.info
             )
         else:
-            raise RuntimeError('method is only valid for models fit using HMC.')
+            raise RuntimeError('Method only valid for models fit using HMC.')

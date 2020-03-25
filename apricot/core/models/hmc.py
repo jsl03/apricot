@@ -3,6 +3,7 @@ import numpy as np
 
 from apricot.core import utils
 
+
 def run_hmc(
         interface: 'apricot.core.models.interface.Interface',
         x: np.ndarray,
@@ -66,20 +67,13 @@ def run_hmc(
     if seed is None:
         seed = utils.random_seed()
 
-    # make the data dictionary
     data = interface.make_pystan_dict(x, y, jitter, fit_options, seed=seed)
-
-    # get the appropriate inits
     init = interface.get_init(init_method, data)
-
-    # clone the init for each chain
-    inits = [init] * chains
-
+    inits = [init] * chains  # need init for each chain
     control = {
         'adapt_delta': adapt_delta,
         'max_treedepth': max_treedepth,
     }
-
     opts = {
         'data': data,
         'init': inits,
@@ -91,14 +85,9 @@ def run_hmc(
         'seed': seed,
     }
     result = interface.pystan_model.sampling(**opts)
-
     samples, info = _hmc_post_internal(result, permute=permute, seed=seed)
-
-    # store the seed and inits for debug purposes
     info['seed'] = seed
     info['inits'] = inits
-
-    # run the checks
     info['passed_rhat'] = _check_rhat(info['rhat'])
     info['passed_divergences'] = _check_divergent(info['divergent'])
     info['passed_saturation'] = _check_tree_saturation(
@@ -106,8 +95,8 @@ def run_hmc(
         info['max_treedepth']
     )
     info['passed_ebfmi'] = _check_ebfmi(info['e_bfmi'])
-
     return samples, info
+
 
 def _hmc_post_internal(
         result: dict,
@@ -125,11 +114,8 @@ def _hmc_post_internal(
     sampler_params = result.get_sampler_params(inc_warmup=False)
     nchains = len(sampler_params)
 
-    # extract the raw samples for the requested model parameters
     raw_samples = result.extract(permuted=False)
     iterations = raw_samples.shape[0]
-
-    # allocate containers for results
     rhat = {}
     n_eff = {}
     e_bfmi = np.empty(nchains)
@@ -143,14 +129,13 @@ def _hmc_post_internal(
         idx = rows.index(param)
         rhat[param] = result.summary()['summary'][:,rhat_pos][idx]
         n_eff[param] = result.summary()['summary'][:,neff_pos][idx]
- 
+
         # slice out the samples
         for chain in range(nchains):
             a = chain*iterations
             b = (chain+1) * iterations
-            samples[a : b, idx] = raw_samples[:, chain, idx]
+            samples[a: b, idx] = raw_samples[:, chain, idx]
 
-    # get the max treedepth
     max_td = result.stan_args[0]['control']['max_treedepth']
 
     # extract the sampler parameters
@@ -167,7 +152,6 @@ def _hmc_post_internal(
         tup = _permute_aligned((samples, chain_id, excess_treedepth, divergent),seed)
         samples, chain_id, treedepth, divergent = tup
 
-    # make info dictionary
     info = {
         'method': 'hmc',
         'colnames': rows,
@@ -195,7 +179,7 @@ def _same_lengths(arrays: typing.List[np.ndarray]):
 
 def _permute_aligned(
         arrays: typing.List[np.ndarray],
-        seed: typing.Optional[int] =  None,
+        seed: typing.Optional[int] = None,
 ):
     """ Permute arrays, retaining row alignment.
 
@@ -211,7 +195,9 @@ def _permute_aligned(
     permuted arrays : tuple of ndarray
     """
     if not _same_lengths(arrays):
-        raise ValueError('Not all provided arrays have identical shapes in axis 0.')
+        raise ValueError(
+            'Not all provided arrays have identical shapes in axis 0.'
+        )
     n = arrays[0].shape[0]
     if seed:
         np.random.seed(seed)

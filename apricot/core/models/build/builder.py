@@ -1,4 +1,3 @@
-import typing
 from apricot.core import utils
 from apricot.core.models.build import components
 from apricot.core.models.build import core_parts
@@ -76,6 +75,7 @@ def _fuse_code_blocks(
 
     # join blocks together with newlines and we're done
     return '\n'.join(model_blocks)
+
 
 def _fuse(name, block):
     return '{0} {{\n  {1}\n}}'.format(name, block)

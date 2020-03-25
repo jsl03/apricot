@@ -6,7 +6,7 @@ from apricot.core.models.prior import ls_inv_gamma
 Fit_Options_Type_Alias = typing.Optional[typing.Union[str, typing.List[str]]]
 
 
-#TODO: refactor
+# TODO: refactor
 def make_pystan_dict(
         interface_instance: 'apricot.core.models.interface.Interface',
         x: np.ndarray,

@@ -104,7 +104,7 @@ Eigen::RowVectorXd cross_cov_grad_eq(
 class GpEqKernel
 {
 private:
-    Eigen::MatrixXd x;                                  // (n, d) array of points 
+    Eigen::MatrixXd x;                                  // (n, d) array of points
     Eigen::VectorXd y;                                  // (n) vector of responses
     Eigen::VectorXd amp_sq;                             // marginal standard deviation
     Eigen::MatrixXd ls_sq;                              // (d) squared anisotropic lengthscales
@@ -193,7 +193,7 @@ GpEqKernel::GpEqKernel(
     for (int k=0; k<amp_sq.size(); k++){
         lxxs.reserve(amp_sq.size());
         axxs.reserve(amp_sq.size());
-        lxxs.push_back(L_cov_eq(x, amp_sq(k), ls_sq.row(k), sigma_sq(k)));
+        lxxs.push_back(L_cov_eq(x, amp_sq(k), ls_sq.row(k), sigma_sq(k) + delta));
         axxs.push_back(lxxs[k].solve(y));
     }
 }

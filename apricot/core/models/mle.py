@@ -68,14 +68,8 @@ def run_mle(
 
     if seed is None:
         seed = utils.random_seed()
-
-    # make the data dictionary
     data = interface.make_pystan_dict(x, y, jitter, fit_options)
-
-    # get the appropriate inits
     init = interface.get_init(init_method, data)
-
-    # assign options
     opts = {
         'data': data,
         'init': init,

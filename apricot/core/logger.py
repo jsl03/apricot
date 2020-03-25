@@ -1,5 +1,6 @@
 import logging
 
+
 def get_logger():
     logger = logging.getLogger('apricot')
     logger.propagate = 0

@@ -1,7 +1,6 @@
 import re
 import typing
 import seaborn as sns
-import matplotlib
 from matplotlib import pyplot as plt
 from matplotlib import gridspec
 import numpy as np
@@ -59,7 +58,7 @@ def plot_parameter(
     figsize: Figure_Size = None,
 ):
     if figsize is None:
-        figsize = (7,3)
+        figsize = (7, 3)
     ndim = hyperparameters[name].shape[1]
     plt.figure(figsize=(figsize[0], figsize[1] * ndim))
     gs = gridspec.GridSpec(ndim, 2)
@@ -68,12 +67,21 @@ def plot_parameter(
         ax0 = plt.subplot(gs[dim, 0])
         ax1 = plt.subplot(gs[dim, 1])
         nchains = int(max(info['sample_chain_id']))
-        for chain in range(1,nchains+1):
+        for chain in range(1, nchains+1):
             data = hyperparameters[name][:, dim][info['sample_chain_id'] == chain]
             if log_param:
                 data = np.log(data)
-            sns.distplot(data, hist=False, kde=True, label='chain {0}'.format(chain), ax=ax0)
-            plt.plot(data, label='chain {0}'.format(chain))
+            sns.distplot(
+                data,
+                hist=False,
+                kde=True,
+                label='chain {0}'.format(chain),
+                ax=ax0
+            )
+            plt.plot(
+                data,
+                label='chain {0}'.format(chain)
+            )
         ax0.legend(frameon=False)
         ax0.set_xlabel(param_name)
         ax0.set_ylabel('density')

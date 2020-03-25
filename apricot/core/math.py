@@ -2,6 +2,7 @@
 
 import numpy as np
 
+
 def integrate_mixture(means: np.ndarray, variances: np.ndarray):
     """ Calculate the first two moments of a mixture of Gaussians with uniform
     weights.

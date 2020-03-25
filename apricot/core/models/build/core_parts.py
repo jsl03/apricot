@@ -19,4 +19,3 @@ _CORE = {
 
 def _get_core():
     return StanModelPart(**_CORE)
-

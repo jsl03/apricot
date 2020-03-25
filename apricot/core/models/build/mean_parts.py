@@ -1,5 +1,7 @@
+from apricot.core.models.build.code_snippets import x_to_matrix
+from apricot.core.models.build.code_snippets import mu_to_zeros
+from apricot.core.models.build.code_snippets import x_dot_beta
 from apricot.core.models.build.components import StanModelMeanFunction
-from apricot.core.models.build.code_snippets import x_to_matrix, mu_to_zeros, x_dot_beta
 from apricot.core.exceptions import _raise_NotImplemented
 
 
