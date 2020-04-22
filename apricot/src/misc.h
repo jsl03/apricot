@@ -22,3 +22,69 @@ double ncdfd(double x){
 double npdfdg(double x){
   return -(x * exp(-((pow(x,2))/2))) / sqrt(2 * M_PI);
 }
+
+/* Conditional covariance matrix */
+Eigen::MatrixXd conditionalCov(
+    const Eigen::Ref<const Eigen::MatrixXd>& kxstarxstar,
+    const Eigen::LLT<Eigen::MatrixXd> &lxx,
+    const Eigen::Ref<const Eigen::MatrixXd>& kxxstar
+    )
+{
+     return (
+          kxstarxstar - kxxstar.transpose() * lxx.solve(kxxstar)
+          ).selfadjointView<Eigen::Lower>();
+}
+
+/* Cholesky factor of conditional covariance matrix */
+Eigen::MatrixXd conditionalCovChol(
+    const Eigen::Ref<const Eigen::MatrixXd>& kxstarxstar,
+    const Eigen::LLT<Eigen::MatrixXd> &lxx,
+    const Eigen::Ref<const Eigen::MatrixXd>& kxxstar
+    )
+{
+     return (
+          kxstarxstar - kxxstar.transpose() * lxx.solve(kxxstar)
+          ).selfadjointView<Eigen::Lower>().llt().matrixL();
+}
+
+/* Conditional marginal variance */
+Eigen::VectorXd conditionalVar(
+     const double kxstarxstar_diag,
+     const Eigen::LLT<Eigen::MatrixXd> &lxx,
+     const Eigen::Ref<const Eigen::MatrixXd>& kxxstar,
+     const double delta
+     )
+{
+     return (
+          kxstarxstar_diag -
+          ((kxxstar.transpose() * lxx.solve(kxxstar)).diagonal()).array()
+          ).cwiseMax(delta).matrix();
+}
+
+/* Conditional marginal variance for 1 point only */
+Eigen::VectorXd conditionalVar1d(
+     const double kxstarxstar_diag,
+     const Eigen::LLT<Eigen::MatrixXd> &lxx,
+     const Eigen::Ref<const Eigen::RowVectorXd>& kxstarx,
+     const double delta
+     )
+{
+     return (
+          kxstarxstar_diag -
+          ((kxstarx * lxx.solve(kxstarx.transpose())).diagonal()).array()
+          ).cwiseMax(delta).matrix();
+}
+
+/* Conditional marginal standard deviation */
+Eigen::VectorXd conditionalSd(
+     const double kxstarxstar_diag,
+     const Eigen::LLT<Eigen::MatrixXd> &lxx,
+     const Eigen::Ref<const Eigen::MatrixXd>& kxxstar,
+     const double delta
+     )
+{
+     return (
+          kxstarxstar_diag -
+          ((kxxstar.transpose() * lxx.solve(kxxstar)).diagonal()).array()
+          ).cwiseMax(delta).sqrt().matrix();
+}

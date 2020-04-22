@@ -1,8 +1,7 @@
-/*
- *
- * License goes here
- *
- */
+// This file is licensed under Version 3.0 of the GNU General Public
+// License. See LICENSE for a text of the license.
+// -----------------------------------------------------------------------------
+
 
 // Lower cholesky factor of EQ kernel sample covariance matrix
 //
@@ -17,7 +16,7 @@
 //         squared Gaussian noise standard deviation (noise variance)
 //
 // Outputs:
-//     L : (n, n) array
+//     lxx : (n, n) array
 //         lower Cholesky factor of cov(x, x | amp_sq, ls_sq, sigma_sq)
 //
 Eigen::LLT<Eigen::MatrixXd> L_cov_eq(
@@ -46,7 +45,7 @@ Eigen::LLT<Eigen::MatrixXd> L_cov_eq(
     return c.selfadjointView<Eigen::Lower>().llt();
 }
 
-// Lower cholesky factor of EQ kernel sample covariance matrix
+// EQ kernel sample covariance matrix
 //
 // Inputs:
 //     x : (n, d) array
@@ -59,7 +58,7 @@ Eigen::LLT<Eigen::MatrixXd> L_cov_eq(
 //         squared Gaussian noise standard deviation (noise variance)
 //
 // Outputs:
-//     C_x1_x2 : (n, n) array
+//     kxx : (n, n) array
 //         Covariance matrix cov(x, x | amp_sq, ls_sq, sigma_sq)
 //
 Eigen::MatrixXd cov_eq(
@@ -101,7 +100,7 @@ Eigen::MatrixXd cov_eq(
 //         dimensionwise (anisotropic) squared lengthscales
 //
 // Outputs:
-//     C_x1_x2 : (n, m) array
+//     kx1x2 : (n, m) array
 //         Cross covariance matrix k(x1, x2 | amp_sq, ls_sq)
 //
 // Notes:
@@ -132,7 +131,7 @@ Eigen::MatrixXd cross_cov_eq(
 // EQ kernel 1d cross covariance calculation
 //
 // Inputs:
-//     xstar1d : (d) array
+//     just_xstar : (d) array
 //         a single d dimensional point
 //     x : (n, d) array
 //         n points in d dimensions
@@ -142,11 +141,12 @@ Eigen::MatrixXd cross_cov_eq(
 //         dimensionwise (anisotropic) squared lengthscales
 //
 // Outputs:
-//     C_1d : (n) array
-//         covariance between xstar1d and x, i.e. k(xstar1d, x | amp_sq, ls_sq)
+//     kxstarx : (n) array
+//         covariance between just_xstar and x, i.e.
+//         kxstarx = k(just_xstar, x | amp_sq, ls_sq)
 //
 Eigen::RowVectorXd cov_1d_eq(
-    Eigen::Ref<const Eigen::RowVectorXd> xstar1d,
+    Eigen::Ref<const Eigen::RowVectorXd> just_xstar,
     Eigen::Ref<const Eigen::MatrixXd> x,
     const double amp_sq,
     Eigen::Ref<const Eigen::VectorXd> ls_sq
@@ -157,7 +157,7 @@ Eigen::RowVectorXd cov_1d_eq(
     for(int i = 0; i < x.rows(); i++){
         tau = 0.0;
         for(int d = 0; d < x.cols(); d++){
-            tau += pow(xstar1d(d) - x(i,d), 2.0) / ls_sq(d);
+            tau += pow(just_xstar(d) - x(i,d), 2.0) / ls_sq(d);
         }
         c(i) = amp_sq * exp(-0.5 * tau);
     }
@@ -167,19 +167,26 @@ Eigen::RowVectorXd cov_1d_eq(
 // EQ kernel 1d cross covariance partial derivatives
 //
 // Inputs:
-//     xstar1d : (d) array containing a single sample point
-//     x : (n, d) array of sample points
-//     d : dimension in which to compute the partial derivative
-//     amp_sq : squared marginal standard deviation (marginal variance)
-//     ls_sq : (d) array of dimensionwise squared lengthscales
-//     kxstarx : (n) array containing k(xstar1d, x | amp_sq, ls_sq)
+//     just_xstar : (d) array
+//         a single d dimensional point
+//     x : (n, d) array
+//         n points in d dimensions
+//     d : int
+//         dimension in which to compute the partial derivative
+//     amp_sq : double
+//         squared marginal standard deviation (marginal variance)
+//     ls_sq : (d) array
+//         dimensionwise (anisotropic) squared lengthscales
+//     kxstarx : (n) array
+//         Output of cov_1d_eq(just_xstar, x, amp_sq, ls_sq)
 //
 // Outputs:
-//     dK_1d_dx : (n) array containing the partial derivatives of
-//         k(xstar1d, x | amp_sq, ls_sq) with respect to x in dimension d
+//     dkxstarx_dxstar : (n) array
+//         partial derivatives of k(just_xstar, x | amp_sq, ls_sq)
+//         with respect to just_xstar in dimension d
 //
 Eigen::RowVectorXd cross_cov_grad_eq(
-    Eigen::Ref<const Eigen::RowVectorXd> xstar1d,
+    Eigen::Ref<const Eigen::RowVectorXd> just_xstar,
     Eigen::Ref<const Eigen::MatrixXd> x,
     int d,
     double amp_sq,
@@ -187,48 +194,88 @@ Eigen::RowVectorXd cross_cov_grad_eq(
     Eigen::Ref<const Eigen::MatrixXd> kxstarx
     )
 {
-    return ((xstar1d(d) - x.col(d).array())
+    return ((just_xstar(d) - x.col(d).array())
             / ls_sq(d)).transpose().array() * kxstarx.array();
 }
 
 // Class for a Gaussian Process with an EQ covariance kernel
 //
 // Private Attributes:
-//     x : (n, d) array of sample points
-//     y : (n) array of sample responses
-//     amp_sq : squared marginal standard deviation (marginal variance)
-//     ls_sq : (d) array of dimensionwise squared lengthscales
-//     sigma_sq : squared Gaussian noise standard deviation (noise variance)
-//     delta : stability jitter ("nugget")
-//     lxxs : List of t memoized (n, n) sample covariance cholesky factors
-//     axxs : List of t memoized (n) dot products between the inverse sample
-//         covariance matrix and the sample responses.
+//     x : (n, d) array
+//         n points in d dimensions
+//     y : (n)
+//         n scalar responses
+//     amp_sq : (s) array
+//         a total of t squared marginal standard deviation (marginal variance)
+//         hyperparameter samples
+//     ls_sq : (s, d) array
+//         a total of t length d vectors representing dimensionwise
+//         (anisotropic) squared lengthscale hyperparameter samples
+//     sigma_sq : (s) array
+//         a total of s squared Gaussian noise standard deviation
+//         (noise variance) hyperparameter samples
+//     delta : double
+//         stability jitter ("nugget")
+//     lxxs : List of size s
+//         A total of s memoized (n, n) sample covariance cholesky factors. The
+//         kth element of lxxs corresponds to the lower Cholesky factor of the
+//         sample covariance matrix obtained by
+//         k(x, x | amp_sq_k, ls_sq_k, sigma_sq_k), that is, the kth set of
+//         hyperparameter samples.
+//     axxs : List of size s
+//         A total of s memoized (n) dot products between the inverse sample
+//         covariance matrix and the sample responses. The kth element of axxs
+//         corresponds is equivalent to lxxs[k].solve(y).
 //
-//  Public Attributes:
-//      xdata : raw (n,d) array of sample points
-//      ydata : raw (n) array of sample responses
-//      amp : (t) array of marginal standard deviation samples
-//      ls : (t, d) array of dimensionwise (anisotropic) lengthscale samples
-//      sigma : (t) array of Gaussian noise variance samples
-//      jitter : stability jitter
-//
-//  Public Methods:
-//      view_x : view the data x
-//      view_y : view the data y
-//      view_parameters : view the hyperparameters (amp_sq, ls_sq, sigma_sq)
-//      view_lxx : view lower Cholesky factors of k(x,x)
-//      posterior : posterior joint distribution
-//      posterior_chol : posterior joint distribution (Cholesky parametrisation)
-//      marginals : posterior marginals
-//      E : posterior expectation
-//      px : pure exploration (negative posterior variance)
-//      px_jac : pure exploration and its jacobian
-//      ei : expected improvement
-//      ei_jac : expected improvement and its jacobian
-//      ucb : upper confidence bound
-//      ucb_jac : upper confidence bound and its jacobian
-//      loo_cv : leave one out cross validation scores for sample data
-//      entropy : differential entropy
+// Public Attributes:
+//     xdata : (n,d) array
+//         n points in d dimensions
+//     ydata : (n) array
+//         n scalar responses
+//     amp : (s) array
+//         a total of s marginal standard deviation hyperparameter samples
+//     ls : (s, d) array
+//         a total of s length d vectors representing dimensionwise
+//         (anisotropic) lengthscale samples
+//     sigma : (s) array
+//         a total of s Gaussian noise standard deviation hyperparameter
+//         samples
+//     jitter : double
+//         stability jitter
+//        
+// Public Methods:
+//     view_x
+//         view the data x
+//     view_y
+//         view the data y
+//     view_parameters
+//         view the hyperparameters (amp_sq, ls_sq, sigma_sq)
+//     view_lxx
+//         view lower Cholesky factors of k(x,x)
+//     posterior
+//         posterior joint distribution
+//     posterior_chol
+//         posterior joint distribution (Cholesky parametrisation)
+//     marginals
+//         posterior marginals
+//     E
+//         posterior expectation
+//     px
+//         pure exploration (negative posterior variance)
+//     px_jac
+//         pure exploration and its jacobian
+//     ei
+//         expected improvement
+//     ei_jac
+//         expected improvement and its jacobian
+//     ucb
+//         upper confidence bound
+//     ucb_jac
+//         upper confidence bound and its jacobian
+//     loo_cv
+//         leave one out cross validation scores for sample data
+//     entropy
+//         differential entropy
 //     
 class GpEqKernel
 {
@@ -331,18 +378,28 @@ public:
 // EQ kernel GP class-constructor
 //
 // Inputs:
-//     xdata : raw (n,d) array of sample points
-//     ydata : raw (n) array of sample responses
-//     amp : (t) array of marginal standard deviation samples
-//     ls : (t, d) array of dimensionwise (anisotropic) lengthscale samples
-//     sigma : (t) array of Gaussian noise variance samples
-//     jitter : stability jitter
+//     xdata : (n,d) array
+//         n points in d dimensions
+//     ydata : (n) array
+//         n scalar responses
+//     amp : (s) array
+//         a total of s marginal standard deviation hyperparameter samples
+//     ls : (s, d) array
+//         a total of s length d vectors representing dimensionwise
+//         (anisotropic) lengthscale samples
+//     sigma : (s) array
+//         a total of s Gaussian noise standard deviation hyperparameter
+//         samples
+//     jitter : double
+//         stability jitter
 //
 // Outputs:
-//     GpEqKernel : EQ kernel GP
+//     GpEqKernel
+//         GP with EQ kernel
 //
 // Notes:
-//     Class constructor wants non-squared hyperparameters.
+//     Class constructor wants *non-squared* hyperparameters; they are squared
+//     on initialising the constructor.
 //
 GpEqKernel::GpEqKernel(
     const Eigen::MatrixXd &xdata,
@@ -359,16 +416,12 @@ GpEqKernel::GpEqKernel(
         sigma_sq(sigma.array().square()),
         delta(jitter)
 {
-    for (int k=0; k<amp_sq.size(); k++){
+    for (int k=0; k < amp_sq.size(); k++){
         lxxs.reserve(amp_sq.size());
         axxs.reserve(amp_sq.size());
         lxxs.push_back(
-            L_cov_eq(
-                x,
-                amp_sq(k),
-                ls_sq.row(k),
-                sigma_sq(k) + delta)
-            );
+             L_cov_eq(x, amp_sq(k), ls_sq.row(k), sigma_sq(k) + delta)
+             );
         axxs.push_back(lxxs[k].solve(y));
     }
 }
@@ -376,7 +429,8 @@ GpEqKernel::GpEqKernel(
 // view the data x
 //
 // Outputs:
-//     (n, d) array of sample points
+//     x : (n, d)
+//         n points in d dimensions
 //
 const Eigen::MatrixXd
 GpEqKernel::view_x()
@@ -384,10 +438,11 @@ GpEqKernel::view_x()
     return x;
 }
 
-// view the daya y
+// view the data y
 //
 // Outputs:
-//     (n) array of sample responses
+//     y : (n) array
+//         n scalar responses
 //
 const Eigen::VectorXd
 GpEqKernel::view_y()
@@ -398,9 +453,14 @@ GpEqKernel::view_y()
 // view the hyperparameters
 //
 // Outputs:
-//    amp_sq : (t) array of t squared marginal standard deviation samples
-//    ls_sq : (t, d) array of t anisotropic squared lengthscale samples
-//    sigma_sq : (t) array of t squared Gaussian noise standard deviation samples
+//    amp_sq : (s) array
+//        a total of s marginal standard deviation hyperparameter samples
+//    ls_sq : (s, d) array
+//        a total of s length d vectors representing dimensionwise
+//        (anisotropic) lengthscale samples
+//    sigma_sq : (s) array
+//        a total of s Gaussian noise standard deviation hyperparameter
+//        samples
 //
 std::tuple<const Eigen::VectorXd, const Eigen::MatrixXd, const Eigen::VectorXd>
 GpEqKernel::view_parameters()
@@ -411,8 +471,10 @@ GpEqKernel::view_parameters()
 // view the lower Cholesky factors of k(x, x | amp, ls, sigma)
 //
 // Outputs:
-//     lxxs : length t list of (n,n) arrays containing the lower Cholesky factor
-//         of K = k(x, x | amp_t, ls_t, sigma_t)
+//     lxxs : list of (n,n) array
+//         Length s list of the lower Cholesky factors of the sample covariance
+//         matrices computed using the kth set of hyperparameters, that is:
+//         lxxs(k) = chol(k(x, x | amp_k, ls_k, sigma_k))
 //
 std::vector<Eigen::MatrixXd> GpEqKernel::view_lxx()
 {
@@ -427,180 +489,158 @@ std::vector<Eigen::MatrixXd> GpEqKernel::view_lxx()
 // posterior joint distribution at xstar
 //
 // Inputs:
-//     xstar : (m, d) array of points at which to compute the posterior
-//         (equivalently, "conditional" or "predictive") distribution
-//
+//     xstar : (m, d) array
+//         m points in d dimensions, at which to compute the posterior
+//         distribution of the GP
+//    
 // Outputs:
-//     mu : (m, t) array containing t length m vectors corresponding to the
-//         posterior mean at xstar for each of the t hyperparameter samples.
-//     K : Length t list of (m, m) arrays corresponding to the posterior
-//         covariance matrices for each of the t hyperparameter samples.
+//     means : (m, s) array
+//         A total of s length m vectors describing the posterior mean of the GP
+//         at the points in xstar for each of the s hyperparameter samples.
+//     cov_mats : Length s list of (m, m) arrays
+//         A total of s (m, m) arrays describing the posterior covariance
+//         structure of the GP at the points in xstar for each of the s
+//         hyperparameter samples.
 //
 std::tuple<Eigen::MatrixXd, std::vector<Eigen::MatrixXd>>
 GpEqKernel::posterior(
     Eigen::Ref<const Eigen::MatrixXd> xstar
     )
 {
-    Eigen::MatrixXd m(xstar.rows(), amp_sq.size());
-    std::vector<Eigen::MatrixXd> v;
-    v.reserve(amp_sq.size());
+    Eigen::MatrixXd means(xstar.rows(), amp_sq.size());
+    std::vector<Eigen::MatrixXd> cov_mats;
+    cov_mats.reserve(amp_sq.size());
     Eigen::MatrixXd kxxstar(x.rows(), xstar.rows());
     for (int k=0; k<amp_sq.size(); k++){
-        kxxstar = cross_cov_eq(
-            x,
-            xstar,
-            amp_sq(k),
-            ls_sq.row(k));
-        m.col(k) = kxxstar.transpose() * axxs[k];
-        // next we compute:
-        //
-        // kzz - kzx * kxx_inv * kxz
-        //
-        // but reference only the lower triangular half and return
-        // a symmetrical view
-        v.push_back(
-            (
-                 cov_eq(
-                     xstar,
-                     amp_sq(k),
-                     ls_sq.row(k),
-                     sigma_sq(k)).array() -
-                 (
-                     (kxxstar.transpose() * lxxs[k].solve(kxxstar))
-                     ).array()
-                 ).matrix().selfadjointView<Eigen::Lower>()
-            );
+         kxxstar = cross_cov_eq(x, xstar, amp_sq(k), ls_sq.row(k));
+         means.col(k) = kxxstar.transpose() * axxs[k];
+         cov_mats.push_back(
+              conditionalCov(
+                   cov_eq(xstar, amp_sq(k), ls_sq.row(k), sigma_sq(k)),
+                   lxxs[k],
+                   kxxstar)
+              );
     }
-    return std::make_tuple(m, v);
+    return std::make_tuple(means, cov_mats);
 }
 
 
 // posterior distribution at xstar (Cholesky parametrisation)
 //
 // Inputs:
-//     xstar : (m, d) array of points at which to compute the posterior
-//         (equivalently, "conditional" or "predictive") distribution
+//     xstar : (m, d) array
+//         m points in d dimensions, at which to compute the posterior
+//         distribution of the GP
 //
 // Outputs:
-//     mu : (m, t) array containing t length m vectors corresponding to the
-//         posterior mean at xstar for each of the t hyperparameter samples.
-//     L : Length t list of (m, m) arrays corresponding to the lower Cholesky
-//         factors posterior of the covariance matrices for each of the t
-//          hyperparameter samples.
+//     means : (m, s) array
+//         A total of s length m vectors describing the posterior mean of the GP
+//         at the points in xstar for each of the s hyperparameter samples.
+//     cov_mat_chols : Length s list of (m, m) arrays
+//         A total of s (m, m) arrays containing the lower Cholesky factors of
+//         the posterior covariance structure of the GP at the points in xstar
+//         for each of the s hyperparameter samples.
 //
 std::tuple<Eigen::MatrixXd, std::vector<Eigen::MatrixXd>>
 GpEqKernel::posterior_chol(
     Eigen::Ref<const Eigen::MatrixXd> xstar
     )
 {
-    Eigen::MatrixXd m(xstar.rows(), amp_sq.size());
-    std::vector<Eigen::MatrixXd> v;
-    v.reserve(amp_sq.size());
+    Eigen::MatrixXd means(xstar.rows(), amp_sq.size());
+    std::vector<Eigen::MatrixXd> cov_mat_chols;
+    cov_mat_chols.reserve(amp_sq.size());
     Eigen::MatrixXd kxxstar(x.rows(), xstar.rows());
-    for (int k=0; k<amp_sq.size(); k++){
+    for (int k=0; k < amp_sq.size(); k++){
         kxxstar = cross_cov_eq(x, xstar, amp_sq(k), ls_sq.row(k));
-        m.col(k) = kxxstar.transpose() * axxs[k];
-        // next we compute:
-        //
-        // kzz - kzx * kxx_inv * kxz
-        //
-        // but reference only the lower triangular half and return
-        // a symmetrical view
-        v.push_back(
-            (
-                cov_eq(
-                    xstar,
-                    amp_sq(k),
-                    ls_sq.row(k),
-                    sigma_sq(k)).array() -
-                (
-                    (kxxstar.transpose() * lxxs[k].solve(kxxstar))
-                    ).array()
-                ).matrix().selfadjointView<Eigen::Lower>().llt().matrixL()
-            );
+        means.col(k) = kxxstar.transpose() * axxs[k];
+        cov_mat_chols.push_back(
+              conditionalCovChol(
+                   cov_eq(xstar, amp_sq(k), ls_sq.row(k), sigma_sq(k)),
+                   lxxs[k],
+                   kxxstar)
+              );
     }
-    return std::make_tuple(m, v);
+    return std::make_tuple(means, cov_mat_chols);
 }
 
 // posterior marginals at xstar
 //
 // Inputs:
-//     xstar : (m, d) array of points at which to compute the posterior
-//         (equivalently, "conditional" or "predictive") marginals
+//     xstar : (m, d) array
+//         m points in d dimensions, at which to compute the posterior marginals
+//         of the GP
 //
 // Outputs:
-//     mu : (m, t) array containing t length m vectors corresponding to the
-//         posterior mean at xstar for each of the t hyperparameter samples.
-//     var : (m, t) array containing t length m vectors corresponding to the
-//         posterior marginal variance at xstar for each of the t hyperparameter
-//         samples.
-//        
+//     means : (m, s) array
+//         A total of t length m vectors describing the posterior mean of the GP
+//         at the points in xstar for each of the s hyperparameter samples.
+//     vars : (m, s)
+//         A total of s length m vectors describing the posterior marginal
+//         variance of the GP at the points in xstar for each of the s
+//         hyperparameter samples.
+//
 std::tuple<Eigen::MatrixXd, Eigen::MatrixXd>
 GpEqKernel::marginals(
     Eigen::Ref<const Eigen::MatrixXd> xstar
     )
 {
-    Eigen::MatrixXd m(xstar.rows(), amp_sq.size());
-    Eigen::MatrixXd v(xstar.rows(), amp_sq.size());
+    Eigen::MatrixXd means(xstar.rows(), amp_sq.size());
+    Eigen::MatrixXd vars(xstar.rows(), amp_sq.size());
     Eigen::MatrixXd kxxstar(x.rows(), xstar.rows());
     for (int k=0; k<amp_sq.size(); k++){
         kxxstar = cross_cov_eq(x, xstar, amp_sq(k), ls_sq.row(k));
-        m.col(k) = kxxstar.transpose() * axxs[k];
-        // next, compute diag(kzz) - diag(kzx * kxx_inv * kxz)
-        // where:
-        //     diag(kzz) = amp_sq + sigma_sq
-        // and:
-        //     kxx_inv = lxx \ kxz
-        //
-        // then ensure all elements > delta
-        v.col(k) = (
-            (amp_sq(k) + sigma_sq(k)) -
-            ((kxxstar.transpose() * lxxs[k].solve(kxxstar))
-             .diagonal()).array()
-            ).cwiseMax(delta).matrix();
+        means.col(k) = kxxstar.transpose() * axxs[k];
+        vars.col(k) = conditionalVar(
+             amp_sq(k) + sigma_sq(k),
+             lxxs[k],
+             kxxstar,
+             delta
+             );
     }
-    return std::make_tuple(m, v);
+    return std::make_tuple(means, vars);
 }
 
 // posterior expectation
 //
 // Inputs:
-//     xstar : (m, d) array of points at which to compute the posterior
+//     xstar : (m, d) array
+//         m points in d dimensions, at which to compute the posterior
 //         expectation.
 //
 // Outputs:
-//     E : (m) array containing the posterior expectation at xstar, integrated
-//         over the hyperparameter samples.
+//     expectation : (m) array
+//         the posterior expectation at xstar, integrated over the
+//         s hyperparameter samples.
 //
 Eigen::VectorXd
 GpEqKernel::E(
     Eigen::Ref<const Eigen::MatrixXd> xstar
     )
 {
-    Eigen::VectorXd m = Eigen::VectorXd::Zero(xstar.rows());
+    Eigen::VectorXd expectation = Eigen::VectorXd::Zero(xstar.rows());
     Eigen::MatrixXd kxxstar(x.rows(), xstar.rows());
     for (int k=0; k<amp_sq.size(); k++){
-        kxxstar = cross_cov_eq(
-            x,
-            xstar,
-            amp_sq(k),
-            ls_sq.row(k));
-        m.noalias() += (kxxstar.transpose() * axxs[k]);
+        kxxstar = cross_cov_eq(x, xstar, amp_sq(k), ls_sq.row(k));
+        expectation.noalias() += (kxxstar.transpose() * axxs[k]);
     }
-    return m / amp_sq.size();
+    return expectation / amp_sq.size();
 }
 
 // posterior expectation and jacobian
 //
 // Inputs:
-//     xstar1d : (d) array representing a single d-dimensional point at which
-//         the posterior expectation and its jacobian should be computed.
+//     just_xstar : (d) array
+//         a single d-dimensional point at which the posterior expectation
+//         and its partial derivatives with respect to just_xstar should be
+//         computed
 //        
 // Outputs:
-//     E : float describing the posterior expectation at xstar1d, integrated
-//         over the hyperparameter samples.
-//     E_jac : (d) array containing the partial derivatives of E at xstar1d with
-//         respect to xstar1d
+//     expectation : double
+//         the posterior expectation at just_xstar, integrated over the s
+//         hyperparameter samples.
+//     expectation_jac : (d) array
+//         the partial derivatives of the posterior expectation at just_xstar
+//         with respect to just_xstar
 //
 std::tuple<double, Eigen::VectorXd>
 GpEqKernel::E_jac(
@@ -609,77 +649,79 @@ GpEqKernel::E_jac(
 {
     Eigen::RowVectorXd kxstarx(x.rows());
     Eigen::RowVectorXd dkxstarx_dxstar(x.rows());
-    double m = 0;
-    Eigen::VectorXd jac = Eigen::VectorXd::Zero(xstar.size());
+    double expectation = 0;
+    Eigen::VectorXd expectation_jac = Eigen::VectorXd::Zero(xstar.size());
     for (int k=0; k<amp_sq.size(); k++){
-        kxstarx = cov_1d_eq(
-            xstar,
-            x,
-            amp_sq(k),
-            ls_sq.row(k));
-        m += kxstarx.dot(axxs[k]);
+        kxstarx = cov_1d_eq(xstar, x, amp_sq(k), ls_sq.row(k));
+        expectation += kxstarx.dot(axxs[k]);
         for (int d=0; d<xstar.size(); d++){
             dkxstarx_dxstar = cross_cov_grad_eq(
-                xstar,
-                x,
-                d,
-                amp_sq(k),
-                ls_sq.row(k),
-                kxstarx);
-            jac(d) -= dkxstarx_dxstar.dot(axxs[k]);
+                 xstar,
+                 x,
+                 d,
+                 amp_sq(k),
+                 ls_sq.row(k),
+                 kxstarx);
+            expectation_jac(d) -= dkxstarx_dxstar.dot(axxs[k]);
         }
     }
-    return std::make_tuple(m / amp_sq.size(), jac / amp_sq.size());
+    return std::make_tuple(
+         expectation / amp_sq.size(),
+         expectation_jac / amp_sq.size());
 }
 
 // pure exploration acquisition function
 //
 // Inputs:
-//     xstar : (m, d) array of points at which to compute the posterior
-//         expectation.
+//     xstar : (m, d) array
+//         m points in d dimensions, at which to compute the pure exploration
+//         acquisition function
 //
 // Outputs:
-//     px : (m) array containing the pure exploration at xstar
+//     px : (m) array
+//         the pure exploration at xstar, integrated over the s hyperparameter
+//         samples.
 //
 // Notes:
-//     px is equivalent to the (negative) expectation of the marginal variance
+//     px is negative and equivalent to the (negative) expectation of the
+//     marginal variance
 //
 Eigen::VectorXd
 GpEqKernel::px(
     Eigen::Ref<const Eigen::MatrixXd> xstar
     )
 {
-    Eigen::MatrixXd kxxstar(x.rows(), xstar.rows());
-    Eigen::VectorXd v = Eigen::VectorXd::Zero(xstar.rows());
-    for (int k=0; k<amp_sq.size(); k++){
-        kxxstar = cross_cov_eq(
-            x,
-            xstar,
-            amp_sq(k),
-            ls_sq.row(k));
-        v.noalias() -=
-            ((amp_sq(k) + sigma_sq(k)) -
-             ((kxxstar.transpose() * lxxs[k].solve(kxxstar)).diagonal()
-                 ).array()).cwiseMax(delta).matrix();
+    Eigen::VectorXd px = Eigen::VectorXd::Zero(xstar.rows());
+    for (int k=0; k < amp_sq.size(); k++){
+        px.noalias() -= conditionalVar(
+             amp_sq(k) + sigma_sq(k),
+             lxxs[k],
+             cross_cov_eq(x, xstar, amp_sq(k), ls_sq.row(k)),
+             delta
+             );
     }
-    return v / amp_sq.size();
+    return px / amp_sq.size();
 }
 
 // pure exploration and jacobian
 //
 // Inputs:
-//     xstar1d : (d) array representing a single d-dimensional point at which to
-//         the pure exploration acquisition function and its jacobian should be
-//         computed.
+//     just_xstar : (d) array
+//         a single d-dimensional point at which the pure exploration
+//         acquisition function and its partial derivatives with respect
+//         to just_xstar should be computed
 //
 // Outputs:
-//     px : float describing the pure exploration acquisition function at
-//         xstar1d, integrated over the hyperparameter samples.
-//     px_jac : (d) array containing the partial derivatives of the pure
-//         exploration at xstar1d with respect to xstar1d.
+//     px : double
+//         the pure exploration at just_xstar, integrated over the s
+//         hyperparameter samples.
+//     px_jac : (d) array
+//         the partial derivatives of the pure exploration at just_xstar
+//         with respect to just_xstar
 //
 // Notes:
-//     px is equivalent to the (negative) expectation of the marginal variance
+//     px is negative and equivalent to the (negative) expectation of the
+//     marginal variance
 //
 std::tuple<Eigen::VectorXd, Eigen::VectorXd>
 GpEqKernel::px_jac(
@@ -688,20 +730,17 @@ GpEqKernel::px_jac(
 {
     Eigen::RowVectorXd kxstarx(x.rows());
     Eigen::RowVectorXd dkxstarx_dxstar(x.rows());
-    Eigen::MatrixXd I = Eigen::MatrixXd::Identity(x.rows(), x.rows());
-    Eigen::RowVectorXd v = Eigen::VectorXd::Zero(1);
-    Eigen::MatrixXd jac = Eigen::VectorXd::Zero(xstar.size());
-    for (int k=0; k<amp_sq.size(); k++){
-        kxstarx = cov_1d_eq(
-            xstar,
-            x,
-            amp_sq(k),
-            ls_sq.row(k));
-        v.noalias() -=
-            ((amp_sq(k) + sigma_sq(k)) -
-             ((kxstarx * lxxs[k].solve(kxstarx.transpose())).diagonal()
-                 ).array()).cwiseMax(delta).matrix();
-        for (int d=0; d<xstar.size(); d++){
+    Eigen::RowVectorXd px = Eigen::VectorXd::Zero(1);
+    Eigen::MatrixXd px_jac = Eigen::VectorXd::Zero(xstar.size());
+    for (int k=0; k < amp_sq.size(); k++){
+        kxstarx = cov_1d_eq(xstar, x, amp_sq(k), ls_sq.row(k));
+        px.noalias() -= conditionalVar1d(
+             amp_sq(k) + sigma_sq(k),
+             lxxs[k],
+             kxstarx,
+             delta
+             );
+        for (int d=0; d < xstar.size(); d++){
             dkxstarx_dxstar = cross_cov_grad_eq(
                 xstar,
                 x,
@@ -709,24 +748,29 @@ GpEqKernel::px_jac(
                 amp_sq(k),
                 ls_sq.row(k),
                 kxstarx);
-            jac(d) += (kxstarx * lxxs[k].solve(-dkxstarx_dxstar.transpose()));
+            px_jac(d) += kxstarx * lxxs[k].solve(-dkxstarx_dxstar.transpose());
         }
     }
-    return std::make_tuple(v / amp_sq.size(), jac*2 / amp_sq.size());
+    return std::make_tuple(
+         px / amp_sq.size(),
+         px_jac*2 / amp_sq.size());
 }
 
-// expected improvement
+// expected improvement (EI) acquisition function
 //
 // Inputs:
-//     xstar : (m, d) array of points at which to compute the expected
+//     xstar : (m, d) array
+//         m points in d dimensions, at which to compute the expected
 //         improvement
 //
 // Outputs:
-//     ei : (m) array containing the expected improvement at xstar,
-//         integrated over the hyperparameter samples
+//     ei : (m) array
+//         the expected improvement at xstar, integrated over the s
+//         hyperparameter samples.
 //
 // Notes:
-//     This implementation of ei is negative and seeks the minimum
+//     This implementation of EI is negative and seeks the minimum, that is,
+//     this function measures the expected reduction over the incumbent minimum.
 //
 Eigen::VectorXd
 GpEqKernel::ei(
@@ -739,40 +783,43 @@ GpEqKernel::ei(
     Eigen::VectorXd ei = Eigen::VectorXd::Zero(xstar.rows());
     Eigen::VectorXd gamma(xstar.rows());
     double ystar = y.minCoeff();
-    for (int k=0; k<amp_sq.size(); k++){
-        kxxstar = cross_cov_eq(
-            x,
-            xstar,
-            amp_sq(k),
-            ls_sq.row(k));
+    for (int k=0; k < amp_sq.size(); k++){
+        kxxstar = cross_cov_eq(x, xstar, amp_sq(k), ls_sq.row(k));
         mean = kxxstar.transpose() * axxs[k];
-        sd = (
-            (amp_sq(k) + sigma_sq(k)) -
-            ((kxxstar.transpose() * lxxs[k].solve(kxxstar)
-                ).diagonal()).array()).cwiseMax(delta).sqrt().matrix();
+        sd = conditionalSd(
+             amp_sq(k) + sigma_sq(k),
+             lxxs[k],
+             kxxstar,
+             delta
+             );
         gamma = (ystar - mean.array()).array() / sd.array();
         ei.array() -= (
-            (ystar - mean.array()) * ncdf(gamma).array() +
-            sd.array() * npdf(gamma).array()
-            ).array();
+             (ystar - mean.array()) * ncdf(gamma).array() +
+             sd.array() * npdf(gamma).array()
+             ).array();
     }
     return ei / amp_sq.size();
 }
 
-// expected improvement and jacobian
+// expected improvement (EI) and jacobian
 //
 // Inputs:
-//     xstar1d : (d) array representing a single d-dimensional point at which to
-//         the expected improvement and its jacobian should be computed.
+//     just_xstar : (d) array
+//         a single d-dimensional point at which the expected improvement
+//         acquisition function and its partial derivatives with respect
+//         to just_xstar should be computed
 //
 // Outputs:
-//     ei : float describing the expected improvement at xstar1d, integrated
-//         over the hyperparameter samples.
-//     ei_jac : (d) array containing the partial derivatives of the expected
-//         improvement at xstar1d with respect to xstar1d.
+//     expected_improvement : double
+//         the expected improvement at just_xstar, integrated over the s
+//         hyperparameter samples.
+//     expected_improvement_jac : (d) array
+//         the partial derivatives of the expected improvement at just_xstar
+//         with respect to just_xstar
 //
 // Notes:
-//     this implementation of ei is negative and seeks the minimum
+//     This implementation of EI is negative and seeks the minimum, that is,
+//     this function measures the expected reduction over the incumbent minimum.
 //
 std::tuple<double, Eigen::VectorXd>
 GpEqKernel::ei_jac(
@@ -790,20 +837,16 @@ GpEqKernel::ei_jac(
     double ystar = y.minCoeff();
     Eigen::RowVectorXd kxstarx(x.rows());
     Eigen::RowVectorXd dkxstarx_dxstar(x.rows());
-    Eigen::VectorXd jac(xstar.size());
-    for (int k=0; k<amp_sq.size(); k++){
-        kxstarx = cov_1d_eq(
-            xstar,
-            x,
-            amp_sq(k),
-            ls_sq.row(k));
+    Eigen::VectorXd ei_jac(xstar.size());
+    for (int k=0; k < amp_sq.size(); k++){
+        kxstarx = cov_1d_eq(xstar, x, amp_sq(k), ls_sq.row(k));
         mean = kxstarx.dot(axxs[k]);
         var = (amp_sq(k) + sigma_sq(k)) -
-            kxstarx.dot(lxxs[k].solve(kxstarx.transpose()));
+             kxstarx.dot(lxxs[k].solve(kxstarx.transpose()));
         sd = sqrt(var);
         gamma = (ystar - mean) / sd;
         ei -= (ystar - mean) * ncdfd(gamma) + sd * npdfd(gamma);
-        for (int d=0; d<xstar.size(); d++){
+        for (int d=0; d < xstar.size(); d++){
             dkxstarx_dxstar = cross_cov_grad_eq(
                 xstar,
                 x,
@@ -818,28 +861,34 @@ GpEqKernel::ei_jac(
             gamma_grad = (
                 ((mean - ystar) * sd_grad) - (sd * mean_grad)
                 ) / var;
-            jac(d) -= (ystar-mean) *
-                gamma_grad * npdfd(gamma) -
-                ncdfd(gamma) * mean_grad +
-                npdfd(gamma) * sd_grad + sd * gamma_grad * npdfdg(gamma);
+            ei_jac(d) -=
+                 (ystar-mean) *
+                 gamma_grad * npdfd(gamma) -
+                 ncdfd(gamma) * mean_grad +
+                 npdfd(gamma) * sd_grad + sd * gamma_grad * npdfdg(gamma);
         }
     }
-    return std::make_tuple(ei / amp_sq.size(), jac / amp_sq.size());
+    return std::make_tuple(
+         ei / amp_sq.size(),
+         ei_jac / amp_sq.size());
 }
 
-// upper confidence bound
+// upper confidence bound (UCB) acquisition function
 //
 // Inputs:
-//     xstar : (m, d) array of points at which to compute the expected
+//     xstar : (m, d) array
+//         m points in d dimensions, at which to compute the expected
 //         improvement
-//     beta : ucb beta parameter
+//     beta : double
+//         Parameter controlling the trade between exploration and exploitation
 //
 // Outputs:
-//     ucb : (m) array containing the upper confidence bound at xstar,
-//         integrated over the hyperparameter samples
+//     ucb : (m) array
+//         the UCB at xstar, integrated over the s hyperparameter samples.
 //
 // Notes:
-//     This implementation of ucb is negative and seeks the minimum
+//     This implementation of UCB is negative and seeks the minimum: strictly
+//     speaking this function measures a (negative) lower confidence bound.
 //
 Eigen::VectorXd
 GpEqKernel::ucb(
@@ -851,36 +900,45 @@ GpEqKernel::ucb(
     Eigen::VectorXd mean(xstar.rows());
     Eigen::VectorXd sd(xstar.rows());
     Eigen::VectorXd ucb = Eigen::VectorXd::Zero(xstar.rows());
-    for (int k=0; k<amp_sq.size(); k++){
+    for (int k=0; k < amp_sq.size(); k++){
         kxxstar = cross_cov_eq(
             x,
             xstar,
             amp_sq(k),
             ls_sq.row(k));
         mean = kxxstar.transpose() * axxs[k];
-        sd = ((amp_sq(k) + sigma_sq(k)) -
-              ((kxxstar.transpose() * lxxs[k].solve(kxxstar)
-                  ).diagonal()).array()).cwiseMax(delta).sqrt().matrix();
-        ucb.array() += mean.array() - (sqrt(beta) * sd.array());
+        ucb.array() +=
+             mean.array() - (sqrt(beta) * conditionalSd(
+                                  amp_sq(k) + sigma_sq(k),
+                                  lxxs[k],
+                                  kxxstar,
+                                  delta
+                                  )).array();
     }
     return ucb / amp_sq.size();
 }
 
-// upper confidence bound and jacobian
+// expected improvement (EI) and jacobian
 //
 // Inputs:
-//     xstar1d : (d) array representing a single d-dimensional point at which to
-//         the upper confidence bound and its jacobian should be computed.
-//     beta : ucb beta parameter
+//     just_xstar : (d) array
+//         a single d-dimensional point at which the expected improvement
+//         acquisition function and its partial derivatives with respect
+//         to just_xstar should be computed
+//     beta : double
+//         Parameter controlling the trade between exploration and exploitation
 //
 // Outputs:
-//     ucb : float describing the expected improvement at xstar1d, integrated
-//         over the hyperparameter samples.
-//     ucb_jac : (d) array containing the partial derivatives of ucb at xstar1d
-//         with respect to xstar1d.
+//     expected_improvement : double
+//         the expected improvement at just_xstar, integrated over the s
+//         hyperparameter samples.
+//     expected_improvement_jac : (d) array
+//         the partial derivatives of the expected improvement at just_xstar
+//         with respect to just_xstar
 //
 // Notes:
-//     this implementation of ucb is negative and seeks the minimum
+//     This implementation of UCB is negative and seeks the minimum: strictly
+//     speaking this function measures a (negative) lower confidence bound.
 //
 std::tuple<double, Eigen::VectorXd>
 GpEqKernel::ucb_jac(
@@ -894,21 +952,17 @@ GpEqKernel::ucb_jac(
     double var;
     double sd;
     double sd_grad;
-    double srbeta = sqrt(beta);
+    double sr_beta = sqrt(beta);
     Eigen::RowVectorXd kxstarx(x.rows());
     Eigen::RowVectorXd dkxstarx_dxstar(x.rows());
-    Eigen::VectorXd jac(xstar.size());
+    Eigen::VectorXd ucb_jac(xstar.size());
     for (int k=0; k<amp_sq.size(); k++){
-        kxstarx = cov_1d_eq(
-            xstar,
-            x,
-            amp_sq(k),
-            ls_sq.row(k));
+        kxstarx = cov_1d_eq(xstar, x, amp_sq(k), ls_sq.row(k));
         mean = kxstarx.dot(axxs[k]);
         var = (amp_sq(k) + sigma_sq(k)) -
-            kxstarx.dot(lxxs[k].solve(kxstarx.transpose()));
+             kxstarx.dot(lxxs[k].solve(kxstarx.transpose()));
         sd = sqrt(var);
-        ucb += mean - (srbeta * sd);
+        ucb += mean - (sr_beta * sd);
         for (int d=0; d<xstar.size(); d++){
             dkxstarx_dxstar = cross_cov_grad_eq(
                 xstar,
@@ -917,21 +971,25 @@ GpEqKernel::ucb_jac(
                 amp_sq(k),
                 ls_sq.row(k),
                 kxstarx);
-            sd_grad = -(
-                kxstarx.dot(lxxs[k].solve(-dkxstarx_dxstar.transpose()))
-                ) / sd;
+            sd_grad =
+                 -(kxstarx.dot(lxxs[k].solve(-dkxstarx_dxstar.transpose())))
+                 / sd;
             mean_grad = -dkxstarx_dxstar.dot(axxs[k]);
-            jac(d) += mean_grad - (srbeta * sd_grad);
+            ucb_jac(d) += mean_grad - (sr_beta * sd_grad);
         }
     }
-    return std::make_tuple(ucb / amp_sq.size(), jac / amp_sq.size());
+    return std::make_tuple(
+         ucb / amp_sq.size(),
+         ucb_jac / amp_sq.size()
+         );
 }
 
 // leave-one-out predictive sample data density
 //
 // Outputs:
-//     loo_cv : (n, t) array containing the loo-cv scores for each of the n
-//     training samples and each of the t hyperparameter samples
+//     loo_cv : (n, t) array
+//     loo-cv scores for each of the n training samples
+//     for each of the s hyperparameter samples
 //
 // Notes:
 //     Uses the method of Sundararajan and Keerthi:
@@ -956,13 +1014,15 @@ Eigen::MatrixXd GpEqKernel::loo_cv()
 // differential entropy
 //
 // Inputs:
-//     xstar : (m, d) array of points at which to compute the differential
+//     xstar : (m, d) array
+//         m points in d dimensions, at which to compute the differential
 //         entropy
 //
 // Outputs:
 //     h : The differential entropy of the GP posterior calculated at the
-//         points containing in xstar, integrated over the t hyperparameter
-//         samples.
+//         points containing in xstar, integrated over the s hyperparameter
+//         samples
+//
 double GpEqKernel::entropy(Eigen::Ref<const Eigen::MatrixXd> xstar)
 {
     const double e = std::exp(1.0);
@@ -976,13 +1036,13 @@ double GpEqKernel::entropy(Eigen::Ref<const Eigen::MatrixXd> xstar)
             xstar,
             amp_sq(k),
             ls_sq.row(k));
-        //computes
+        // computes
         //
         // h = tmp + 0.5 * 2 * log(det(Sigma))
         // = tmp + 0.5 * 2 * log(det(kzz - kzx * kxx_inv * kxz))
         // = tmp + sum(log(diag(chol(kzz - kzx * kxx_inv * kxz))))
         //
-        //in a way that Eigen can (hopefully) optimise
+        // in a way that Eigen can (hopefully) optimise
         h += tmp + (
             cov_eq(
                 xstar,
