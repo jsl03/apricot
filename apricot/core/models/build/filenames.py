@@ -1,3 +1,8 @@
+# This file is licensed under Version 3.0 of the GNU General Public
+# License. See LICENSE for a text of the license.
+# ------------------------------------------------------------------------------
+
+
 def mean_part_filename(mean_type):
     """Assign mean function filename component from mean type"""
     if mean_type == 'linear':

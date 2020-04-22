@@ -1,7 +1,9 @@
+# This file is licensed under Version 3.0 of the GNU General Public
+# License. See LICENSE for a text of the license.
+# ------------------------------------------------------------------------------
 import typing
 import re
 import numpy as np
-
 from apricot.core import utils
 
 
@@ -9,7 +11,7 @@ def slice_in_order(
         array: np.ndarray,
         target: str,
         colnames: typing.List[str],
-):
+) -> typing.Optional[np.ndarray]:
     """ Slice target columns of array corresponding to colnames.
 
     Automatically strips brackets from colnames such that (for example) 'ls[0],
@@ -22,14 +24,14 @@ def slice_in_order(
         return None
 
 
-def match(s: str, target: str):
+def match(s: str, target: str) -> bool:
     """ Strips off any brackets from string x and checks if it is equivalent
     to string target. """
     s_stripped = re.sub('\[.*\]', '', s)
     return s_stripped == target
 
 
-def param_to_2dfarray(arr: np.ndarray):
+def param_to_2dfarray(arr: np.ndarray) -> np.ndarray:
     """ Convert not necessarily 1D array to 2D F-ordered array. """
     return np.atleast_1d(arr).reshape(1, -1, order='F')
 
@@ -39,7 +41,7 @@ def hmc_glue(
         interface: 'apricot.core.models.interface.Interface',
         samples: np.ndarray,
         info: dict,
-):
+) -> dict:
     """ Formatting for hyperparameters obtained via Stan using HMC.
 
     Slices out the columns of samples required by the model in order to create
@@ -89,7 +91,7 @@ def mle_glue(
         interface: 'apricot.core.models.interface.Interface',
         opt_result: typing.Dict[str, typing.Any],
         info: dict,
-):
+) -> dict:
     """ Formatting for hyperparameters obtained via Stan using MLE.
 
     Parameters

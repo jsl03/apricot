@@ -3,11 +3,15 @@ from apricot.core.utils import mad
 
 _twopi = np.pi * 2.0
 
+
+# TODO there is a math function for this
 def _to_rad(deg):
     return deg * (np.pi / 180.0)
 
+
 def _cosd(x):
     return np.cos(_to_rad(x))
+
 
 class TestFunction:
     """ Test Function base class
@@ -36,7 +40,7 @@ class TestFunction:
 
     Methods
     -------
-    normalise_with
+    set_normalisation
         Initialise automatic normalisation using the mean and median absolute
         deviation of a supplied data sample.
     reset_normalisation
@@ -78,42 +82,41 @@ class TestFunction:
         self.f = f
         self.noise = noise
         self._normalised = False
-        
+
     @property
     def d(self):
         return len(self.bounds)
-    
+
     @property
     def _lower(self):
         """ Return lower bounds for each input dimension"""
         return np.array([a for a, _ in self.bounds])
-    
+
     @property
     def _upper(self):
         """ Return upper bounds for each input dimension"""
         return np.array([b for _, b in self.bounds])
 
-    def normalise_with(self, y):
+    def set_normalisation(self, y):
         """
         Set normalisation for the test function used for subsequent queries
         based on the mean and standard deviation of the provided sample, and
         return the provided values scaled by the stored normalisation
         constants.
-        
+
         Parameters
         ----------
         y : data
             (n,) array
-        
+
         Returns
         -------
         y_normalised : normalised data
             (n,) array
         """
-        if not self._normalised:
-            self._normalised = True
-            self.mean = np.mean(y, dtype=np.float64)
-            self.mad = mad(y)
+        self._normalised = True
+        self.mean = np.mean(y, dtype=np.float64)
+        self.mad = mad(y)
         return (y - self.mean) / self.mad
 
     def reset_normalisation(self):
@@ -124,15 +127,17 @@ class TestFunction:
 
     def __call__(self, x):
         """ Query the test function"""
+
         if self.noise:
             y = self._call_with_noise(x)
         else:
             y = self._call_no_noise(x)
+
         if self._normalised:
             return (y - self.mean)/self.mad
         else:
             return y
-    
+
     def _format_input(self, x):
         """ Format test function inputs
 
@@ -170,7 +175,7 @@ class TestFunction:
         """ Query the test function"""
         y = self.f(self._format_input(x))
         return y.ravel()
-    
+
 # -----------------------------------------------------------------------------
 # Wing weight function
 # -----------------------------------------------------------------------------

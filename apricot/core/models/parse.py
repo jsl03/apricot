@@ -1,15 +1,24 @@
+# This file is licensed under Version 3.0 of the GNU General Public
+# License. See LICENSE for a text of the license.
+# ------------------------------------------------------------------------------
 import typing
 from apricot.core import exceptions
 from apricot.core.models.build import mean_parts
 from apricot.core.models.build import noise_parts
+from apricot.core.models.build import kernel_parts
 
 
-# TODO: this is broken: doesnt parse anything. Need to fix so apricot.Emulator
-# can use it, too.
 def parse_kernel(kernel_type: str):
     """Parse requested kernel option."""
-    return kernel_type
-
+    if kernel_type in kernel_parts.AVAILABLE:
+        return kernel_type
+    else:
+        exceptions._raise_NotImplemented(
+            'kernel',
+            kernel_type,
+            kernel_parts.AVAILABLE
+        )
+       
 
 def parse_noise(noise_type: typing.Optional[typing.Union[float, str]]):
     """ Parse requested noise option.
@@ -58,7 +67,10 @@ def _parse_noise_float(noise_type: float):
     try:
         noise = float(noise_type)
     except ValueError:
-        raise TypeError("'noise_type' must be either a floating point number, None, 'zero' or 'infer'.")
+        raise TypeError(
+            "'noise_type' must be either a floating point number, "
+            "None, 'zero' or 'infer'."
+        )
     return noise
 
 

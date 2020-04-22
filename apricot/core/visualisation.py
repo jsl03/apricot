@@ -1,9 +1,12 @@
+# This file is licensed under Version 3.0 of the GNU General Public
+# License. See LICENSE for a text of the license.
+# ------------------------------------------------------------------------------
 import re
 import typing
 import seaborn as sns
+import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import gridspec
-import numpy as np
 
 
 sns_context = 'paper'
@@ -19,7 +22,7 @@ sns.set_palette(sns_palette)
 Figure_Size = typing.Optional[typing.Tuple[float, float]]
 
 
-def _assign_param_name(name: str, ndim: int, dim: int, log: bool):
+def _assign_param_name(name: str, ndim: int, dim: int, log: bool) -> str:
     """ Assign parameter name for plotting. """
     if log:
         _name = 'log {0}'.format(name)
@@ -32,7 +35,7 @@ def _assign_param_name(name: str, ndim: int, dim: int, log: bool):
     return param_name
 
 
-def _parse_param_str(s: str):
+def _parse_param_str(s: str) -> typing.Tuple[str, typing.Optional[int]]:
     """ Strip brackets from string s and return the bracketed value """
     x_ = re.sub('\[.*\]', '', s)
     match = re.search(r'\[(.*?)\]', s)
@@ -42,7 +45,7 @@ def _parse_param_str(s: str):
         return x_, None
 
 
-def _get_param(hyperparameters: dict, col: str):
+def _get_param(hyperparameters: dict, col: str) -> np.ndarray:
     name, dim = _parse_param_str(col)
     if dim:  # parameter is vector valued
         return hyperparameters[name][:, dim-1]
@@ -56,7 +59,7 @@ def plot_parameter(
     info: dict,
     log_param: bool = False,
     figsize: Figure_Size = None,
-):
+) -> None:
     if figsize is None:
         figsize = (7, 3)
     ndim = hyperparameters[name].shape[1]
@@ -95,7 +98,7 @@ def plot_divergences(
     hyperparameters: dict,
     info: dict,
     figsize: Figure_Size = None,
-):
+) -> None:
     if figsize is None:
         figsize = (7, 3)
     colnames = info['colnames']
@@ -104,10 +107,14 @@ def plot_divergences(
     ax = plt.subplot(gs[0])
     idx_true = info['divergent'] == 1
     idx_false = info['divergent'] == 0
-    data_array = np.array([_get_param(hyperparameters, col) for col in colnames]).T
+    data_array = np.array(
+        [_get_param(hyperparameters, col) for col in colnames]
+    ).T
     col_mins = np.min(data_array, axis=0)
     col_maxs = np.max(data_array, axis=0)
-    data_array_normed = (data_array - np.min(data_array, axis=0)) / (col_maxs - col_mins)
+    data_array_normed = (
+        data_array - np.min(data_array, axis=0)
+    ) / (col_maxs - col_mins)
     nondivergent_transitions = data_array_normed[idx_false, :]
     divergent_transitions = data_array_normed[idx_true, :]
 

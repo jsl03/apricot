@@ -1,10 +1,14 @@
+# This file is licensed under Version 3.0 of the GNU General Public
+# License. See LICENSE for a text of the license.
+# ------------------------------------------------------------------------------
+
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 import sys
 import setuptools
 
 
-__version__ = '0.9'
+__version__ = '0.91'
 
 
 class get_pybind_include(object):
@@ -61,7 +65,9 @@ def cpp_flag(compiler):
     elif has_flag(compiler, '-std=c++11'):
         return '-std=c++11'
     else:
-        raise RuntimeError('Unsupported compiler -- at least C++11 support is needed!')
+        raise RuntimeError(
+            'Unsupported compiler -- at least C++11 support is needed!'
+        )
 
 
 class BuildExt(build_ext):
@@ -92,12 +98,15 @@ class BuildExt(build_ext):
                 opts.append('-fvisibility=hidden')
 
         elif ct == 'msvc':
-            opts.append('/DVERSION_INFO=\\"%s\\"' % self.distribution.get_version())
+            opts.append(
+                '/DVERSION_INFO=\\"%s\\"' % self.distribution.get_version()
+            )
 
         for ext in self.extensions:
             ext.extra_compile_args = opts
 
         build_ext.build_extensions(self) 
+
 
 setup(
     name='apricot',
@@ -107,12 +116,12 @@ setup(
     url='',
     description='',
     long_description='',
-    packages = setuptools.find_packages(),
+    packages=setuptools.find_packages(),
     ext_modules=ext_modules,
     install_requires=['pybind11>=2.2','pystan','numpy'],
-    include_package_data = True,
+    include_package_data=True,
     cmdclass={'build_ext': BuildExt},
-    headers= [
+    headers=[
         'apricot/src/misc.h',
         'apricot/src/gp_eq_kernel.h',
         'apricot/src/gp_m52_kernel.h',

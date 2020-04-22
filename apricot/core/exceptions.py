@@ -1,12 +1,19 @@
-# Custom exceptions
+# This file is licensed under Version 3.0 of the GNU General Public
+# License. See LICENSE for a text of the license.
+# ------------------------------------------------------------------------------
 
 
 def _raise_NotImplemented(
         model_part_identifier: str,
         name: str,
         available: dict
-):
-    """ Standard error format for requested options that do not exist. """
+) -> None:
+    """ Standard error format for requested options that do not exist.
+
+    Raises
+    ------
+    NotImplementedError
+    """
 
     raise NotImplementedError(
         'Unrecognised {0} "{1}": must be one of {2}'.format(
@@ -17,8 +24,13 @@ def _raise_NotImplemented(
     ) from None
 
 
-def _raise_NotParsed(name: str, _type: type):
-    """ Standard error format for arguments that could not be parsed. """
+def _raise_NotParsed(name: str, _type: type) -> None:
+    """ Standard error format for arguments that could not be parsed.
+
+    Raises
+    ------
+    TypeError
+    """
     raise TypeError(
         "Could not parse {n} with type {t}.".format(n=name, t=_type)
     ) from None
@@ -35,7 +47,7 @@ class ShapeError(Exception):
             d0_required: int,
             d1_required: int,
             provided: (int, int),
-    ):
+    ) -> None:
 
         self.info = {
             'arr': identifier,
@@ -44,7 +56,7 @@ class ShapeError(Exception):
             'p': provided,
         }
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Received array '{arr}' of shape {p}: "
         "shape of ({r0}, {r1}) required.".format(**self.info)
 
@@ -53,9 +65,9 @@ class MissingParameterError(Exception):
     """Exception class for when a model tries to access a hyperparameter
     not provided by the hyperparameter dictionary."""
 
-    def __init__(self, name: str):
+    def __init__(self, name: str) -> None:
         self.message = ("Model tried to access unavailable hyperparameter "
                         "{0}".format(name))
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.message

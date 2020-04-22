@@ -1,6 +1,6 @@
-"""
-pyStan model code snippets as strings.
-"""
+# This file is licensed under Version 3.0 of the GNU General Public
+# License. See LICENSE for a text of the license.
+# ------------------------------------------------------------------------------
 
 x_to_matrix = '\n'.join([
     'matrix[n, d + 1] X_matrix ;',

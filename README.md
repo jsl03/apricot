@@ -84,4 +84,4 @@ derived from [Sobol](https://people.sc.fsu.edu/~jburkardt/py_src/sobol/sobol.htm
 
 ## License
 
-MIT.
+GPL v3.

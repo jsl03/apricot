@@ -1,17 +1,20 @@
+# This file is licensed under Version 3.0 of the GNU General Public
+# License. See LICENSE for a text of the license.
+# ------------------------------------------------------------------------------
 import typing
 import os
 import itertools
 import numpy as np
-
+import apricot
 from functools import wraps
 
-import apricot
 
 _ROOTDIR = os.path.dirname(os.path.abspath(apricot.__file__))
 _MODEL_CACHE = _ROOTDIR + '/cache/'
 
 
-def mad(arr: np.ndarray, axis: typing.Optional[int] = None):
+# TODO: belongs in .math?
+def mad(arr: np.ndarray, axis: typing.Optional[int] = None) -> np.ndarray:
     """ Median absolute deviation.
 
     Parameters
@@ -30,7 +33,7 @@ def mad(arr: np.ndarray, axis: typing.Optional[int] = None):
     return np.median(deviation, axis=axis)
 
 
-def maybe(func: callable):
+def maybe(func: callable) -> callable:
     """ Decorator for functions which fail if any arguments are None.
 
     If any arguments passed to a function wrapped with maybe are None,
@@ -57,7 +60,7 @@ def maybe(func: callable):
 
 
 @maybe
-def _force_f_array(arr: np.ndarray):
+def _force_f_array(arr: np.ndarray) -> np.ndarray:
     """ Force provided numpy array to be F contiguous. """
     if arr.flags['F_CONTIGUOUS']:
         return arr
@@ -66,7 +69,7 @@ def _force_f_array(arr: np.ndarray):
 
 
 @maybe
-def _atleast2d_fview(arr: np.ndarray):
+def _atleast2d_fview(arr: np.ndarray) -> np.ndarray:
     """ Force provided numpy array to be at least 2D and F contiguous. """
     if arr.ndim == 1:
         return arr.reshape(-1, 1, order='F')
@@ -74,12 +77,12 @@ def _atleast2d_fview(arr: np.ndarray):
         return _force_f_array(arr)
 
 
-def random_seed():
+def random_seed() -> int:
     """ Generate pyStan Compatible Random Seed. """
     return np.random.randint(np.iinfo(np.int32).max)
 
 
-def set_seed(seed: typing.Optional[int]):
+def set_seed(seed: typing.Optional[int]) -> None:
     """ Seed numpy's random state. """
     if seed is None:
         np.random.seed(random_seed())
@@ -87,7 +90,7 @@ def set_seed(seed: typing.Optional[int]):
         np.random.seed(seed)
 
 
-def is_string(s: str):
+def is_string(s: typing.Optional[typing.Any]) -> bool:
     """Return True if x is a string of finite length"""
     if s is None:
         return False
@@ -98,12 +101,12 @@ def is_string(s: str):
     return True
 
 
-def join_strings(seq: typing.Sequence[typing.Optional[str]]):
+def join_strings(seq: typing.Sequence[typing.Optional[str]]) -> str:
     """ Join all of the elements of seq that are not None with newlines. """
     return '\n'.join([elem for elem in seq if is_string(elem)])
 
 
-def to_list(x):
+def to_list(x: typing.Any) -> typing.List[typing.Any]:
     """ If x is not a list, make it into a list. """
     if type(x) is list:
         return x
@@ -111,7 +114,9 @@ def to_list(x):
         return [x]
 
 
-def join_lines(x):
+def join_lines(
+        x: typing.Optional[typing.Union[typing.Any, typing.List[str]]]
+) -> typing.Optional[typing.Union[typing.Any, str]]:
     """ If x is a list, apply _join_strings. If not, do nothing."""
     if x is None:
         return None
@@ -121,12 +126,15 @@ def join_lines(x):
         return x
 
 
-def flatten(list2d: typing.Sequence[typing.Sequence]):
+def flatten(
+        list2d: typing.Sequence[typing.Sequence[typing.Any]]
+) -> typing.List[typing.Any]:
     """ Flatten 2d iterable of iterables into 1d list """
     return list(itertools.chain.from_iterable(list2d))
 
 
-def inspect_cache():
+# TODO: tell mypy this performs IO?
+def inspect_cache() -> typing.List[str]:
     """Inspect the contents of the model cache.
 
     Lists all .pkl files in the default cache location.
@@ -139,7 +147,8 @@ def inspect_cache():
     return cached_models
 
 
-def clear_model_cache():
+# TODO: tell mypy this performs IO?
+def clear_model_cache() -> None:
     """Clears the model cache
 
     Removes all .pkl files from the default cache location.

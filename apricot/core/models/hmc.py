@@ -1,3 +1,6 @@
+# This file is licensed under Version 3.0 of the GNU General Public
+# License. See LICENSE for a text of the license.
+# ------------------------------------------------------------------------------
 import typing
 import numpy as np
 
@@ -18,7 +21,7 @@ def run_hmc(
         seed: typing.Optional[int] = None,
         permute: bool = True,
         init_method: str = 'stable',
-):
+) -> typing.Union[np.ndarray, dict]:
     """Run Stan's HMC algorithm for the provided model.
 
     This is the model interface to Stan's implementation of the No-U-Turn
@@ -102,15 +105,32 @@ def _hmc_post_internal(
         result: dict,
         permute: bool = True,
         seed: typing.Optional[int] = None,
-):
+) -> typing.Union[np.ndarray, dict]:
+    """
 
-    # retrieve the Rhat positions and number of output variables
+    Parameters
+    ----------
+    result : dict
+        Raw pyStan.sampling output.
+    permute: bool
+        Bool.
+    seed : {None, int}, optional
+        Random seed.
+
+    Returns
+    -------
+    samples : ndarray
+        Array of sampled hyperparameters.
+    info : dict
+        Sampling information.
+    """
+    # retrieving the Rhat positions and number of output variables
     rhat_pos = result.summary()['summary_colnames'].index('Rhat')
     neff_pos = result.summary()['summary_colnames'].index('n_eff')
     rows = result.summary()['summary_rownames'].tolist()
     nrows = len(rows)
 
-    # retrieve the sampler parameters and the number of chains
+    # retrieving the sampler parameters and the number of chains
     sampler_params = result.get_sampler_params(inc_warmup=False)
     nchains = len(sampler_params)
 
@@ -166,7 +186,7 @@ def _hmc_post_internal(
     return samples, info
 
 
-def _same_lengths(arrays: typing.List[np.ndarray]):
+def _same_lengths(arrays: typing.List[np.ndarray]) -> bool:
     """Check if all supplied arrays are the same shape in dimension 0"""
     n = None
     for a in arrays:
@@ -180,7 +200,7 @@ def _same_lengths(arrays: typing.List[np.ndarray]):
 def _permute_aligned(
         arrays: typing.List[np.ndarray],
         seed: typing.Optional[int] = None,
-):
+) -> typing.Sequence[np.ndarray]:
     """ Permute arrays, retaining row alignment.
 
     Permute each array in arrays along axis 0 using the same
@@ -189,10 +209,12 @@ def _permute_aligned(
     Parameters
     ----------
     arrays : iterable container of ndarray
+        The arrays to permute.
 
     Returns
     -------
     permuted arrays : tuple of ndarray
+        The permuted arrays.
     """
     if not _same_lengths(arrays):
         raise ValueError(
@@ -205,13 +227,16 @@ def _permute_aligned(
     return (array[index] for array in arrays)
 
 
-def _calc_ebfmi(energy: np.ndarray):
+def _calc_ebfmi(energy: np.ndarray) -> np.ndarray:
     """ Expected Bayesian Fraction of Missing Information. """
     tmp = np.sum((energy[1:] - energy[:-1])**2) / energy.shape[0]
     return tmp / np.var(energy)
 
 
-def _check_tree_saturation(excess_treedepth: np.ndarray, max_treedepth: int):
+def _check_tree_saturation(
+        excess_treedepth: np.ndarray,
+        max_treedepth: int
+) -> bool:
     """ Check for incidences of tree depth saturation. """
     passed = True
     saturations = excess_treedepth[excess_treedepth == 0].shape[0]
@@ -220,7 +245,7 @@ def _check_tree_saturation(excess_treedepth: np.ndarray, max_treedepth: int):
     return passed
 
 
-def _check_ebfmi(ebfmi):
+def _check_ebfmi(ebfmi) -> bool:
     """ Check that ebfmi > 0.2. """
     passed = True
     for i, tmp in enumerate(ebfmi < 0.2):
@@ -229,7 +254,7 @@ def _check_ebfmi(ebfmi):
     return passed
 
 
-def _check_divergent(divergent: np.ndarray):
+def _check_divergent(divergent: np.ndarray) -> bool:
     """ Check for divergences. """
     passed = True
     ndivergent = np.sum(divergent)
@@ -238,7 +263,7 @@ def _check_divergent(divergent: np.ndarray):
     return passed
 
 
-def _check_rhat(rhat):
+def _check_rhat(rhat) -> bool:
     """ Check rhat < 1.1. """
     passed = True
     for r in rhat:

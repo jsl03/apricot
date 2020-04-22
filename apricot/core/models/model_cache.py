@@ -1,4 +1,6 @@
-import typing
+# This file is licensed under Version 3.0 of the GNU General Public
+# License. See LICENSE for a text of the license.
+# ------------------------------------------------------------------------------
 import os
 import pickle
 import six
@@ -18,12 +20,13 @@ _MODEL_CACHE = _ROOTDIR + '/cache/'
 Model_Part_Type = build.components.StanModelPart
 
 
-def memo(func: callable):
+def memo(func: callable) -> callable:
     """ Simple session cache decorator.
 
     Prevents repeatedly unpickling the same model over and over.
     """
     memory = {}
+
     def wrapper(string):
         if string not in memory:
             memory[string] = func(string)
@@ -36,7 +39,7 @@ def load(
         mean_part: Model_Part_Type,
         noise_part: Model_Part_Type,
         warp: bool,
-):
+) -> pystan.StanModel:
     filename = get_filename(kernel_part, mean_part, noise_part, warp)
     if os.path.isfile(filename):
         return load_from_pickle(filename)
@@ -49,7 +52,7 @@ def get_filename(
         mean_part: Model_Part_Type,
         noise_part: Model_Part_Type,
         warp: bool,
-):
+) -> str:
     fname = '_'.join([
         kernel_part.filename_component,
         mean_part.filename_component,
@@ -61,7 +64,7 @@ def get_filename(
 
 
 @memo
-def load_from_pickle(filename: str):
+def load_from_pickle(filename: str) -> pystan.StanModel:
     """Load a permanently cached pystan model """
     return pickle.load(open(filename, 'rb'))
 
@@ -71,7 +74,7 @@ def compile_model(
         mean_part: Model_Part_Type,
         noise_part: Model_Part_Type,
         filename: str,
-):
+) -> pystan.StanModel:
     """ Assemble model code from parts, compile it, and save the pickle. """
     to_cache = prompt_cache()
     model_code = build.assmeble_model_code(kernel_part, mean_part, noise_part)
@@ -82,8 +85,8 @@ def compile_model(
     return compiled_model
 
 
-#TODO: add timeout
-def prompt_cache(attempts: int = 0):
+# TODO: add timeout
+def prompt_cache(attempts: int = 0) -> bool:
     """ Ask the user if they want to cache the model. """
     attempts += 1
     if attempts > 5:

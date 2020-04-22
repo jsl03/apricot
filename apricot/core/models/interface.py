@@ -1,6 +1,8 @@
+# This file is licensed under Version 3.0 of the GNU General Public
+# License. See LICENSE for a text of the license.
+# ------------------------------------------------------------------------------
 import typing
 import numpy as np
-
 from apricot.core import utils
 from apricot.core.models import build
 from apricot.core.models import parse
@@ -20,7 +22,7 @@ class Interface(object):
             mean_function: typing.Optional[typing.Union[str, int]] = None,
             noise: typing.Optional[typing.Union[str, float]] = None,
             warping: typing.Optional[str] = None,
-    ):
+    ) -> None:
         """ apricot interface to a pyStan GP model
 
         Parameters
@@ -89,7 +91,7 @@ class Interface(object):
             jitter: float = 1e-10,
             fit_options: typing.Optional[dict] = None,
             seed: typing.Optional[float] = None
-    ):
+    ) -> dict:
         """ Construct the pystan 'data' dictionary
 
         Parameters
@@ -128,7 +130,7 @@ class Interface(object):
             self,
             stan_dict: dict,
             init: typing.Optional[typing.Union[str, dict]]
-    ):
+    ) -> typing.Union[dict, str, int]:
         """ Create dictionary of initial values for pyStan
 
         Parameters
@@ -149,7 +151,7 @@ class Interface(object):
 
         Returns
         -------
-        init : {dict, str}
+        init : {dict, str, int}
             Initialisation values for the parameters for the desired
             pyStan model.
 
@@ -173,7 +175,7 @@ class Interface(object):
             seed: typing.Optional[int] = None,
             permute: bool = True,
             init_method: str = 'stable',
-    ):
+    ) -> typing.Union[np.ndarray, dict]:
         """ Sample model hyperparameters using Hamiltonian Monte-Carlo
 
         Parameters
@@ -247,12 +249,12 @@ class Interface(object):
             y: np.ndarray,
             jitter: float = 1e-10,
             fit_options:  typing.Optional[dict] = None,
-            init_method: str = 'random',
+            init_method: typing.Union[dict, str] = 'stable',
             algorithm: str = 'Newton',
             restarts: int = 10,
             max_iter: int = 250,
             seed: typing.Optional[int] = None,
-    ):
+    ) -> typing.Union[np.ndarray, dict]:
         """ Identify model parameters using log-likelihood optimisation
 
         Parameters
@@ -266,17 +268,17 @@ class Interface(object):
              Magnitude of stability jitter. Default = 1e-10.
         fit_options :
              Optional extra parameters to the GP prior distribution.
-        init_method : {dict, str}
-            * if init is a dict, it is assumed to contain an initial value for
-                each of the parameters to be sampled by the pyStan model.
-            * if init is None, the init method defaults to 'stable'.
-            * if init is a string, it is matched to one of the following:
-                - 'stable' : initialise from data. Lengthscales are initialised
-                    to the standard deviation of the respective column of x.
-                - {'0' , 'zero} : initialise all parameters as 0.
-                - 'random' : initialise all parameters randomly on their
-                support.
-            Defaults to 'random' if restarts > 1, and stable otherwise.
+        init_method : {'stable', 'random', 0, dict}
+            String determining the initialisation method. Note that if restarts
+            > 1, only the first optimisation is initialised according to
+            init_method, and the rest will be initialised using
+            init_method = 'random':
+            * 'stable' : "stable" initialise parameters from "stable" guesses.
+            * 'zero' : initialise all parameters from zero.
+            * 'random' : initialise all parameters randomly on their support.
+            * dict : A custom initialisation value for each of the model's
+                parameters.
+        Default = 'random'.
         algorithm : str, optional
              String specifying which of Stan's gradient based optimisation
              algorithms to use. Default = 'Newton'.
@@ -288,6 +290,8 @@ class Interface(object):
         max_iter : int, optional
              Maximum allowable number of iterations for the chosen optimisation
              algorithm. Default = 250.
+        seed : {int32, None}
+            Random seed.
 
         Returns
         -------

@@ -1,3 +1,6 @@
+# This file is licensed under Version 3.0 of the GNU General Public
+# License. See LICENSE for a text of the license.
+# ------------------------------------------------------------------------------
 import typing
 import numpy as np
 from scipy.optimize import minimize
@@ -15,7 +18,7 @@ def optimise(
         grid_method: str = 'lhs',
         grid_options: typing.Optional[dict] = None,
         seed: typing.Optional[int] = None,
-):
+) -> dict:
     """ Generic numerical optimisation routine using SLSQP.
 
     Generic numerical optimisation strategy consisting of a preliminary grid
@@ -87,7 +90,7 @@ def grid_search(
         grid_method: str = 'lhs',
         grid_options: typing.Optional[dict] = None,
         seed: typing.Optional[int] = None,
-):
+) -> np.ndarray:
     """ Preliminary grid search.
 
     Evaluate f over a (gridsize, d) grid of points generated using grid_method
@@ -153,49 +156,126 @@ def _check_grid(grid: np.ndarray, d: int):
     return _check_bounds(xgrid)
 
 
-def _check_bounds(xgrid: np.ndarray):
-    """Check everything is between 0 and 1. """
+def _check_bounds(xgrid: np.ndarray) -> np.ndarray:
+    """Check everything is between 0 and 1.
+
+    Parameters
+    ----------
+    xgrid : ndarray
+        The grid of points to assess.
+
+    Returns
+    -------
+    xgrid : ndarray
+        The assessed grid of points.
+
+    Raises
+    ------
+    ValueError
+        If any of the grid points do not lie on [0,1]^d
+
+    """
     if (xgrid > 1).any() | (xgrid < 0).any():
         raise ValueError('One or more points do not lie on [0, 1]^d')
     else:
         return xgrid
 
 
-def _check_grid_shape_1d(xgrid: np.ndarray):
-    """Check the shape of a 1-dimensional grid. """
+def _check_grid_shape_1d(xgrid: np.ndarray) -> np.ndarray:
+    """Check the shape of a 1-dimensional grid.
+
+    Parameters
+    ----------
+    xgrid : ndarray
+        (n, d_grid) grid of points to assess.
+
+    Returns
+    -------
+    xgrid : ndarray
+        (n, 1) grid of F-ordered points.
+
+    Raises
+    ------
+    ValueError
+        If d_grid != 1
+        If np.squeeze(xgrid).ndim > 1
+    """
     if xgrid.ndim == 1:
         return xgrid.reshape(-1, 1, order='F')
     elif xgrid.squeeze().ndim == 1:
         return _check_grid_shape_1d(xgrid.squeeze())
-    # TODO fix
     else:
-        raise ValueError
+        raise ValueError(
+            'supplied grid should have strictly 1 non-singleton dimension.'
+        )
 
 
-def _check_grid_shape_nd(xgrid: np.ndarray, d: int):
-    """Check the shape of a d-dimensional grid. """
+def _check_grid_shape_nd(xgrid: np.ndarray, d: int) -> np.ndarray:
+    """Check the shape of a d-dimensional grid.
+
+    Parameters
+    ----------
+    xgrid : ndarray
+        (n, d_grid) grid of points to assess.
+    d : int
+        The dimension the grid should be in axis 1.
+
+    Returns
+    -------
+    xgrid : ndarray
+        (n, d) array of F-ordered points.
+
+    Raises
+    ------
+    ValueError
+        If d_grid != d
+        If np.squeeze(xgrid) > 2
+    """
     if xgrid.ndim != 2:  # squeeze grid if it has over 2 dimensions
         xgs = xgrid.squeeze()
         if xgs.ndim == 1:
             if xgs.shape[0] == d:
                 return xgs.reshape(1, -1, order='F')
-            else:  # incompatible
-                # TODO improve this message
-                raise ValueError
-        elif xgs.ndim == 2:  # xgrid is 2d after squeeze; check squeezed grid
+            else:
+                raise ValueError(
+                    'supplied grid must be of shape (n,{0})'.format(d)
+                )
+        elif xgs.ndim == 2:
             return _check_grid_shape_nd(xgs, d)
-        else:  # incompatible; too many non-singleton dimensions
-            raise ValueError
-    else:  # dimensions of grid match; check compatibility
+        else:
+            raise ValueError(
+                'supplied grid may have at most 2 non-singleton dimensions.'
+            )
+    else:
         return _check_grid_shape_nd_internal(xgrid, d)
 
 
-def _check_grid_shape_nd_internal(xgrid: np.ndarray, d: int):
+def _check_grid_shape_nd_internal(xgrid: np.ndarray, d: int) -> np.ndarray:
+    """ Check the shape of a 2D grid in axis 1 matches d
+
+    Parameters
+    ----------
+    xgrid : ndarray
+        (n, d_grid) array
+    d : int
+        The dimension the grid should be in axis 1.
+
+    Returns
+    -------
+    xgrid : ndarray
+        (n, d) array of F-ordered points.
+
+    Raises
+    ------
+    ValueError
+        If d_grid != d.
+    """
     if xgrid.shape[1] == d:
         return _force_f_array(xgrid)
     else:
-        # TODO fix this exception (print information)
-        raise ValueError
+        raise ValueError(
+            'supplied grid must be of shape (n,{0})'.format(d)
+        )
 
 
 def _get_grid(
@@ -205,7 +285,39 @@ def _get_grid(
         grid_method: str = 'lhs',
         grid_options: typing.Optional[dict] = None,
         seed: typing.Optional[int] = None,
-):
+) -> np.ndarray:
+    """
+
+    Parameters
+    ----------
+    d : int
+        Number of grid dimensions.
+    grid : ndarray, optional
+        Pre-generated grid of points. If absent, a grid of size
+        grid_size will be generated using grid_method. Default = None.
+    grid_size : int, optional
+        If grid is None, generate a grid of size (grid_size, d) using
+        grid_method. Default = 100 * d. Ignored if grid != None.
+    grid_method : str, optional
+        If grid is None, generate a grid of size (grid_size, d) using
+        grid_method. Default = 'lhs'. Ignored if grid != None.
+    grid_options : dict, optional
+        Optional extra arguments to pass to grid_method. Default = None.
+        Ignored if grid != None.
+    seed : {int32, None} optional
+        Random seed. Default = None.
+
+    Returns
+    -------
+    grid : ndarray
+        (grid_size, d) array of points.
+
+    Raises
+    ------
+    ValueError
+        If grid has more than 2 non-singleton dimensions.
+        If the dimensions of grid are not consistent with d.
+    """
     if grid is None:
         if grid_size is None:
             grid_size = 100*d

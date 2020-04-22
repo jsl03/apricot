@@ -1,3 +1,6 @@
+# This file is licensed under Version 3.0 of the GNU General Public
+# License. See LICENSE for a text of the license.
+# ------------------------------------------------------------------------------
 from apricot.core.models.build.code_snippets import x_to_matrix
 from apricot.core.models.build.code_snippets import mu_to_zeros
 from apricot.core.models.build.code_snippets import x_dot_beta

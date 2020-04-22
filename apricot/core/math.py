@@ -1,9 +1,14 @@
-"""Miscellaneous mathematical operations should go here."""
-
+# This file is licensed under Version 3.0 of the GNU General Public
+# License. See LICENSE for a text of the license.
+# ------------------------------------------------------------------------------
+import typing
 import numpy as np
 
 
-def integrate_mixture(means: np.ndarray, variances: np.ndarray):
+def integrate_mixture(
+        means: np.ndarray,
+        variances: np.ndarray
+) -> typing.Tuple[np.ndarray, np.ndarray]:
     """ Calculate the first two moments of a mixture of Gaussians with uniform
     weights.
 

@@ -1,6 +1,8 @@
+# This file is licensed under Version 3.0 of the GNU General Public
+# License. See LICENSE for a text of the license.
+# ------------------------------------------------------------------------------
 import typing
 import numpy as np
-
 from apricot.core import utils
 
 
@@ -10,12 +12,12 @@ def run_mle(
         y: np.ndarray,
         jitter: float = 1e-10,
         fit_options:  typing.Optional[dict] = None,
-        init_method: str = 'random',
+        init_method: typing.Union[dict, str] = 'random',
         algorithm: str = 'Newton',
         restarts: int = 10,
         max_iter: int = 250,
         seed: typing.Optional[int] = None,
-):
+) -> typing.Union[np.ndarray, dict]:
     """ Maximum marginal likelihood estimation via numerical optimisation
 
     Parameters
@@ -32,11 +34,14 @@ def run_mle(
     fit_options :
         Optional extra parameters to the GP prior distribution.
     init_method : {'stable', 'zero', 'random'}
-        String determining the initialisation method:
-        * 'stable' : "stable" initialise from data.
+        String determining the initialisation method. Note that if restarts > 1
+        , only the first optimisation is initialised according to init_method,
+        and the rest will be initialised using init_method = 'random':
+        * 'stable' : "stable" initialise parameters from "stable" guesses.
         * 'zero' : initialise all parameters from zero.
         * 'random' : initialise all parameters randomly on their support.
-        Separate random initialisations are used for each restart.
+        * dict : A custom initialisation value for each of the model's
+            parameters.
         Default = 'random'.
     algorithm : str, optional
         String specifying which of Stan's gradient based optimisation
@@ -45,7 +50,7 @@ def run_mle(
         The number of restarts to use. The optimisation will be repeated
         this many times and the hyperparameters with the highest
         log-likelihood will be returned. restarts > 1 is not compatible with
-        'stable' or 0 initialisations. Default=10.
+        initialisation = 0. Default=10.
     max_iter : int, optional
         Maximum allowable number of iterations for the chosen optimisation
         algorithm. Default = 250.
@@ -95,20 +100,38 @@ def _mle_internal(
         interface: 'apricot.core.models.interface.Interface',
         opts: dict,
         restarts: int,
-):
+) -> dict:
     """ Interface to Stan's optimiser. """
     best = -np.inf
     result = None
+
+    # options for first restart
+    opts_0 = opts
+
+    # subsequent restarts always use random initialisation
+    if restarts > 1:
+        opts_n = opts.copy()
+        opts_n['init'] = 'random'
+
     for r in range(restarts):
+
+        if r == 0:
+            opts_to_use = opts_0
+        else:
+            opts_to_use = opts_n
+
         try:
-            result = interface.pystan_model.optimizing(**opts)
+            result = interface.pystan_model.optimizing(**opts_to_use)
             if result['value'] > best:
                 best = result['value']
                 result = result
+
+        # TODO save RTE and pass through to info dictionary
         except RuntimeError:
-            # TODO save rte and pass through to info dictionary
             pass
+
+        # TODO fix: something prevented optimiser from succeeding
         if result is None:
-            # something prevented optimiser from succeeding
             raise RuntimeError from None
+
     return result

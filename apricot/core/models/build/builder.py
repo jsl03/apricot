@@ -1,3 +1,6 @@
+# This file is licensed under Version 3.0 of the GNU General Public
+# License. See LICENSE for a text of the license.
+# ------------------------------------------------------------------------------
 from apricot.core import utils
 from apricot.core.models.build import components
 from apricot.core.models.build import core_parts
@@ -7,7 +10,7 @@ def assmeble_model_code(
         kernel_part: components.StanModelKernel,
         mean_part: components.StanModelMeanFunction,
         noise_part: components.StanModelNoise,
-):
+) -> str:
     """ Assemble the pyStan model code.
 
     Parameters
@@ -33,7 +36,7 @@ def _fuse_code_blocks(
         kernel: components.StanModelKernel,
         mean: components.StanModelMeanFunction,
         noise: components.StanModelNoise,
-):
+) -> str:
     """ Fuse the code blocks together.
 
     Parameters
@@ -77,5 +80,5 @@ def _fuse_code_blocks(
     return '\n'.join(model_blocks)
 
 
-def _fuse(name, block):
+def _fuse(name: str, block: str) -> str:
     return '{0} {{\n  {1}\n}}'.format(name, block)

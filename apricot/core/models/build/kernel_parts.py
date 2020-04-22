@@ -1,5 +1,7 @@
+# This file is licensed under Version 3.0 of the GNU General Public
+# License. See LICENSE for a text of the license.
+# ------------------------------------------------------------------------------
 import copy
-
 from apricot.core import exceptions
 from apricot.core.models.build.components import StanModelKernel
 from apricot.core.models.build.code_snippets import (

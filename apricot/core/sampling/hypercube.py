@@ -1,12 +1,13 @@
+# This file is licensed under Version 3.0 of the GNU General Public
+# License. See LICENSE for a text of the license.
+# ------------------------------------------------------------------------------
 import typing
 import numpy as np
-
 from apricot.core.sampling.sobol import sobol
 from apricot.core.sampling.sobol import sobol_scatter
 from apricot.core.sampling.lhs import lhs
 from apricot.core.sampling.lhs import optimised_lhs
 from apricot.core.sampling.lhs import mdurs
-
 from apricot.core.sampling.factorial import factorial
 from apricot.core.utils import _force_f_array
 from apricot.core.utils import set_seed

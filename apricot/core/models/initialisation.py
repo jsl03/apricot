@@ -1,20 +1,22 @@
+# This file is licensed under Version 3.0 of the GNU General Public
+# License. See LICENSE for a text of the license.
+# ------------------------------------------------------------------------------
 import typing
-
 import numpy as np
 from apricot.core.models.prior import ls_inv_gamma
 
-Fit_Options_Type_Alias = typing.Optional[typing.Union[str, typing.List[str]]]
+Fit_Options = typing.Optional[typing.Union[str, dict]]
 
 
-# TODO: refactor
+# TODO: refactor me; why are we getting a circular import here?
 def make_pystan_dict(
         interface_instance: 'apricot.core.models.interface.Interface',
         x: np.ndarray,
         y: np.ndarray,
         jitter: float = 1e-10,
-        fit_options: Fit_Options_Type_Alias = None,
+        fit_options: Fit_Options = None,
         seed: typing.Optional[int] = None,
-):
+) -> dict:
     """ Make the 'data' dictionary to be supplied to the pystan model.
 
     The data dictionary contains the user-supplied information required to
@@ -110,7 +112,7 @@ def get_init(
         interface_instance: 'apricot.core.models.interface.Interface',
         stan_dict: dict,
         init: typing.Optional[typing.Union[dict, typing.List[str], str]],
-):
+) -> typing.Union[dict, str, int]:
     """ Invoke various initialisation methods for the sampler.
 
     Parameters
@@ -119,24 +121,30 @@ def get_init(
         pyStan model interface.
     stan_dict : dict
         The "data" dictionary to be passed to pyStan.
-    init : {None, dict, list of str, str}
-        * if init is a dict, it is assumed to contain an initial value for each
-        of the parameters to be sampled by the pyStan model.
-        * if init is None, the init method defaults to 'stable'.
-        * if init is a string, it is matched to one of the following:
-            - 'stable' : initialise from data. Lengthscales are initialised to
-            the standard deviation of the respective column of x.
-            - 'zero' : initialise all parameters as 0.
-            - 'random' : initialise all parameters randomly on their
-            support.
-        * if init is a list, it is assumed to contain a string (see above) for
-        each of the sample chains.
+    init : {None, 'stable', 'random', dict}
+        Determines initialisation method:
+        * None : defaults to 'stable'.
+        * 'stable' : "stable" initialise parameters from data:
+            - The marginal standard deviation is initialised to the sample
+                marginal stabard deviation of the supplied function responses,
+                that is amp_init = std(y).
+            - Lengthscales are initialised to the standard deviation of
+                the sample points in their respective dimensions, that is
+                ls_init_i = std(X, axis=0)[i]
+            - The noise standard deviation (if present) is initialised to
+                 1/10th of the marginal standard deviation.
+            - Warping parameter are initialised to values corresponding to the
+                 desired type of warping.
+        * 'zero' : initialise all parameters from zero.
+        * 'random' : initialise all parameters randomly on their support.
+        * dict : A custom initialisation value for each of the model's
+            parameters.
 
     Returns
     -------
-    init : {dict, str}
+    init : {dict, str, int}
         Initialisation values for the parameters for the desired
-        pyStan model.
+        pyStan model. Either a dictionary, 'random' or 0.
 
     See Also
     --------
@@ -144,9 +152,11 @@ def get_init(
     """
     if init is None:
         init = 'stable'
+
     # custom init, let pyStan raise it's own exceptions if necessary
     if type(init) is dict:
         return init
+
     # match init to a valid option or throw an exception
     elif type(init) is str:
         # initialising from data requires a function
@@ -155,17 +165,18 @@ def get_init(
         # otherwise match the string to a valid option
         else:
             return _init_from_str(init)
+
     # if we fall through to here, init is not a string or a dictionary
     raise TypeError(
         'Unable to parse init option of type "{0}".'.format(type(init))
     )
 
 
-#TODO refactor
+# TODO refactor
 def _init_from_data(
         interface_instance: 'apricot.core.models.interface.Interface',
         stan_dict: dict
-):
+) -> dict:
     """ Initialise from data.
 
     Use the data to identify suitable initialisation values for HMC.
@@ -201,7 +212,24 @@ def _init_from_data(
     return init
 
 
-def _init_from_str(init_str: str):
+def _init_from_str(init_str: str) -> typing.Union[str, int]:
+    """
+
+    Parameters
+    ----------
+    init_str : str
+        Requested (Stan compatible) initialisation method.
+
+    Returns
+    -------
+    init_method : str, int
+        Either 'random' or 0.
+
+    Raises
+    ------
+    ValueError
+       If init_str is not in {'random', '0', 'zero'}.
+    """
     options = {
         'random': 'random',
         '0': 0,
@@ -210,5 +238,6 @@ def _init_from_str(init_str: str):
     try:
         return options[init_str]
     except KeyError:
-        raise ValueError('Could not find init option matching "{0}".'
-                         .format(init_str)) from None
+        raise ValueError(
+            'Could not find init option matching "{0}".'.format(init_str)
+        ) from None

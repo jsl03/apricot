@@ -1,3 +1,7 @@
+# This file is licensed under Version 3.0 of the GNU General Public
+# License. See LICENSE for a text of the license.
+# ------------------------------------------------------------------------------
+
 """
 This module is a stripped down and slightly modified version of the
 "sobol_seq" package.
@@ -16,7 +20,7 @@ PYTHON versions by Corrado Chisari
 Original code is available at http://people.sc.fsu.edu/~jburkardt/py_src/sobol/sobol.html
 """
 
-from __future__ import division # deprecated; python2 compatibility not needed
+from __future__ import division  # deprecated; python2 compatibility not needed
 import typing
 import numpy as np
 import six

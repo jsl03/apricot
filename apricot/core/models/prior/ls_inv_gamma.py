@@ -1,11 +1,11 @@
+# This file is licensed under Version 3.0 of the GNU General Public
+# License. See LICENSE for a text of the license.
+# ------------------------------------------------------------------------------
 import typing
 import functools
-
 import numpy as np
-
 from scipy import special
 from scipy import optimize
-
 from apricot.core import utils
 
 
@@ -36,12 +36,12 @@ def ls_inv_gamma_prior(
         corresponding to the respective element of the list will be used for
         each dimension of the index:
         * None : defaults to 'nonlinear'.
-        * 'nonlinear' : 0.01 prior mass mass below minimum spacing and above 1 
+        * 'nonlinear' : 0.01 prior mass mass below minimum spacing and above 1
         * 'linear' : increases the amount of probability mass permissible > 1.
     seed : {None, int}
         Seed for numpy's random state. If None, an arbitrary seed will be used.
         Default = None.
-   
+
     Returns
     -------
     ls_alpha : ndarray
@@ -66,7 +66,7 @@ def ls_inv_gamma_prior(
                 lb_tol,
                 ub_tol,
                 gridsize=gridsize,
-                attempts=max_attempts,
+                max_attempts=max_attempts,
                 seed=seed,
         )
     return ls_alpha, ls_beta
@@ -109,7 +109,7 @@ def inv_gamma_pdf(x: float, alpha: float, beta: float):
     if x <= 0:
         return 0.0
     else:
-        y=((beta**alpha)/special.gamma(alpha))*x**(-(alpha+1.))*np.exp(-beta*(1./x))
+        y=((beta**alpha)/special.gamma(alpha)) * x**(-(alpha + 1.0)) * np.exp(-beta*(1.0 / x))
         return y
 
 
@@ -247,7 +247,7 @@ def solve_inv_gamma(
         theta_grid = np.random.random((gridsize, 2))*scales
         # objective function is not vectorised, so run in loop...
         for i in range(gridsize):
-            obj_grid[i, :] = obj(theta_grid[i,:])
+            obj_grid[i, :] = obj(theta_grid[i, :])
         obj_grid_norm = np.sqrt(np.sum(obj_grid**2, axis=1))
         theta0 = theta_grid[obj_grid_norm.argmin(), :]
         theta_sol = optimize.root(obj, theta0)

@@ -1,16 +1,28 @@
+# This file is licensed under Version 3.0 of the GNU General Public
+# License. See LICENSE for a text of the license.
+# ------------------------------------------------------------------------------
 import typing
-from functools import wraps
 import numpy as np
-
+from functools import wraps
 from apricot.core import gp_internal
 from apricot.core import sampling
 from apricot.core import optimisation
 from apricot.core import utils
 from apricot.core import exceptions
 from apricot.core import visualisation
+from apricot.core.models import parse
 
 
-def _format_input(xstar: np.ndarray, d: int):
+Internal_Gp_Type = typing.Union[
+    gp_internal.GpEqKernel,
+    gp_internal.GpEqKernel,
+    gp_internal.GpM52Kernel,
+    gp_internal.GpM32Kernel,
+    gp_internal.GpRqKernel
+]
+
+
+def _format_input(xstar: np.ndarray, d: int) -> np.ndarray:
     """ Format inputs.
 
     Ensures arrays are correctly shaped and F-ordered before passing to the
@@ -54,7 +66,7 @@ def _format_input(xstar: np.ndarray, d: int):
     return xstar_f
 
 
-def defined_on_index(method: callable):
+def defined_on_index(method: callable) -> callable:
     """ Decorator for methods accepting arrays of points from the index.
 
     Applies _format_inputs to arrays passed to the wrapped method, ensuring
@@ -80,15 +92,15 @@ def defined_on_index(method: callable):
     return wrapper
 
 
-# TODO: make kernel naming consistent with internal (use core.models.parse)
-def _assign_internal(kernel_type):
-    _AVAILABLE = {
+def _assign_internal(kernel_type: str) -> Internal_Gp_Type:
+    assign = {
         'eq': gp_internal.GpEqKernel,
+        'eq_flat': gp_internal.GpEqKernel,
         'm52': gp_internal.GpM52Kernel,
         'm32': gp_internal.GpM32Kernel,
         'rq': gp_internal.GpRqKernel
     }
-    return _AVAILABLE[kernel_type]
+    return assign[parse.parse_kernel(kernel_type)]
 
 
 class Emulator:
@@ -192,7 +204,7 @@ class Emulator:
             kernel_type: typing.Optional[str] = 'eq',
             mean_function_type: typing.Optional[str] = 'zero',
             jitter: typing.Optional[float] = 1e-10,
-    ):
+    ) -> None:
         """ Gaussian Process emulator.
 
         Parameters
@@ -234,7 +246,7 @@ class Emulator:
         # stability jitter
         self._delta = jitter
 
-        # TODO fix this
+        # TODO tidy this mess
         internal = _assign_internal(self.kernel_type)
         self._gp = internal(
             self._x,
@@ -248,7 +260,7 @@ class Emulator:
         self.n, self.d = x.shape
         self.m = self._amp.shape[0]
 
-        # guess the fit method from m if not explicitly provided
+        # HACK guess the fit method from m if not explicitly provided
         if info is None:
             info = {}
             if self.m > 1:
@@ -258,15 +270,17 @@ class Emulator:
         self.info = info
 
     @property
-    def x(self):
+    def x(self) -> np.ndarray:
+        """ (n,d) array of sample points. """
         return self._x
 
     @property
-    def y(self):
+    def y(self) -> np.ndarray:
+        """ (n,) array of sample responses. """
         return self._y
 
     @defined_on_index
-    def __call__(self, xstar: np.ndarray):
+    def __call__(self, xstar: np.ndarray) -> np.ndarray:
         """ Posterior expectation.
 
         The posterior expectation of the emulator, integrated over the model
@@ -288,7 +302,7 @@ class Emulator:
         """
         return self._gp.E(xstar)
 
-    def expectation(self, xstar: np.ndarray):
+    def expectation(self, xstar: np.ndarray) -> np.ndarray:
         """Posterior expectation
 
         The posterior expectation of the emulator, integrated over the model
@@ -311,7 +325,10 @@ class Emulator:
         return self.__call__(xstar)
 
     @defined_on_index
-    def marginals(self, xstar: np.ndarray):
+    def marginals(
+            self,
+            xstar: np.ndarray
+    ) -> typing.Tuple[np.ndarray, np.ndarray]:
         """"Predictive marginals
 
         Marginal predictive distributions corresponding to each hyperparameter
@@ -334,10 +351,13 @@ class Emulator:
         return self._gp.marginals(xstar)
 
     @defined_on_index
-    def posterior(self, xstar: np.ndarray):
+    def posterior(
+            self,
+            xstar: np.ndarray
+    ) -> typing.Tuple[np.ndarray, np.ndarray]:
         """Predictive distribution
 
-        The joint predictive distribution of the model corresponding to each
+        The (joint) predictive distribution of the model corresponding to each
         hyperparameter sample at the points described by xstar.
 
         Parameters
@@ -358,7 +378,7 @@ class Emulator:
         """
         return self._gp.posterior(xstar)
 
-    def loo_cv(self):
+    def loo_cv(self) -> np.ndarray:
         """Leave-One-Out Cross Validation Scores
 
         Returns the analytical log predictive densities at each of the training
@@ -381,7 +401,7 @@ class Emulator:
         return self._gp.loo_cv()
 
     @defined_on_index
-    def ei(self, xstar: np.ndarray):
+    def ei(self, xstar: np.ndarray) -> np.ndarray:
         """Expected improvement acquisition function
 
         The (negative) Expected Improvement (EI) acquisition function of
@@ -416,7 +436,7 @@ class Emulator:
         return self._gp.ei(xstar)
 
     @defined_on_index
-    def px(self, xstar: np.ndarray):
+    def px(self, xstar: np.ndarray) -> np.ndarray:
         """Pure exploration acquisition function
 
         The Pure eXploration (PX) acquisition function is equivalent to
@@ -446,7 +466,7 @@ class Emulator:
         return self._gp.px(xstar)
 
     @defined_on_index
-    def ucb(self, xstar: np.ndarray, beta: float):
+    def ucb(self, xstar: np.ndarray, beta: float) -> np.ndarray:
         """Upper confidence bound acquisition function
 
         The Upper Confidence Bound (UCB) acquisition function of
@@ -489,7 +509,7 @@ class Emulator:
         return self._gp.ucb(xstar, beta)
 
     @defined_on_index
-    def entropy(self, xstar: np.ndarray):
+    def entropy(self, xstar: np.ndarray) -> np.ndarray:
         """Differential entropy
 
         Compute the differential entropy of the posterior (joint) distribution
@@ -508,6 +528,7 @@ class Emulator:
         """
         return self._gp.entropy(xstar)
 
+    # TODO finish docstring
     def optimise(
             self,
             mode: str = 'min',
@@ -517,7 +538,7 @@ class Emulator:
             grid_method: str = 'lhs',
             grid_options: typing.Optional[dict] = None,
             seed: typing.Optional[int] = None,
-    ):
+    ) -> dict:
         """ Global Min/Max of the posterior expectation.
 
         Use numerical optimisation to estimate the global minimum or maximum of
@@ -551,12 +572,18 @@ class Emulator:
             = None.
         seed : {None, int32}
             Random seed. Used for preliminary grid generation. Default = None.
+
+        Returns
+        -------
+        result : dict
+            Optimisation results.
         """
         _mode = mode.lower()
         if _mode == 'min':
             obj = self._gp.E
             obj_jac = self._gp.E_jac
         elif _mode == 'max':
+
             # make objective and jacobian negative if searching for the max
             def obj(x):
                 return -self._gp.E(x)
@@ -592,8 +619,8 @@ class Emulator:
             grid_method: str = 'lhs',
             grid_options: typing.Optional[dict] = None,
             seed: typing.Optional[int] = None,
-    ):
-        """ Get next point using expected improvement.
+    ) -> dict:
+        """ Get the next point using expected improvement.
 
         Use numerical optimisation to estimate the global minimum of the
         (negative) Expected Improvement (EI) acquisition function [1]_, hence
@@ -623,6 +650,11 @@ class Emulator:
             = None.
         seed : {None, int32}
             Random seed. Used for preliminary grid generation. Default = None.
+
+        Returns
+        -------
+        result : dict
+            Optimisation results.
 
         See Also
         --------
@@ -654,8 +686,8 @@ class Emulator:
             grid_method: str = 'lhs',
             grid_options: typing.Optional[dict] = None,
             seed: typing.Optional[int] = None,
-    ):
-        """ Get next point using the pure exploration acquisition function.
+    ) -> dict:
+        """ Get the next point using pure exploration.
 
         Use numerical optimisation to estimate the global minimum of the
         (negative) predictive variance (Pure eXploration; PX) acquisition
@@ -687,6 +719,11 @@ class Emulator:
         seed : {None, int32}
             Random seed. Used for preliminary grid generation. Default = None.
 
+        Returns
+        -------
+        result : dict
+            Optimisation results.
+
         See Also
         --------
         px
@@ -713,8 +750,8 @@ class Emulator:
             grid_method: str = 'lhs',
             grid_options: typing.Optional[dict] = None,
             seed: typing.Optional[int] = None,
-    ):
-        """ Get next point using upper confidence bound
+    ) -> dict:
+        """ Get next point using upper confidence bound.
 
         Use numerical optimisation to estimate the global minimum of the
         (negative) Upper Confidence Bound (UCB) acquisition function [1]_,
@@ -747,6 +784,11 @@ class Emulator:
         seed : {None, int32}
             Random seed. Used for preliminary grid generation. Default = None.
 
+        Returns
+        -------
+        result : dict
+            Optimisation results.
+
         See Also
         --------
         ucb
@@ -758,7 +800,7 @@ class Emulator:
         experimental design. arXiv preprint arXiv:0912.3995.
         """
 
-        # closures define objective function and jacobian with desired beta
+        #  closures defines objective function and jacobian with assigned beta
         def obj(x):
             return self._gp.ucb(x, float(beta))
 
@@ -780,7 +822,7 @@ class Emulator:
             n: typing.Optional[int] = 1000,
             method: typing.Optional[str] = 'sobol',
             seed: typing.Optional[int] = None,
-    ):
+    ) -> np.ndarray:
         """ Calculate first order Sobol indices for the emulator.
 
         Approximates first order Sobol indices for the emulator using the
@@ -796,6 +838,10 @@ class Emulator:
         seed : {None, int32}
             Random seed. Used for sample grid generation. Default = None.
 
+        Returns
+        -------
+        sobol_indices : ndarray
+
         References
         ----------
         [1] Saltelli, A., Annoni, P., Azzini, I., Campolongo, F., Ratto,
@@ -804,9 +850,10 @@ class Emulator:
         Computer Physics Communications, 181(2), pp.259-270.
         """
 
-        X = sampling.sample_hypercube(n, 2*self.d, method=method, seed=seed)
-        A = X[:, :self.d]
-        B = X[:, self.d:]
+        #TODO: snake_case names for variables in here
+        x = sampling.sample_hypercube(n, 2*self.d, method=method, seed=seed)
+        A = x[:, :self.d]
+        B = x[:, self.d:]
         f_A = self.expectation(A)
         f_B = self.expectation(B)
         V_i = np.empty(self.d)
@@ -820,7 +867,7 @@ class Emulator:
         V_T = np.var(np.array(f_all).ravel())
         return V_i / V_T
 
-    def plot_parameter(self, param_name: str):
+    def plot_parameter(self, param_name: str) -> None:
         """ Trace plot of hyperparameter with param_name"""
         if self.info['method'] == 'hmc':
             visualisation.plot_parameter(
@@ -831,7 +878,7 @@ class Emulator:
         else:
             raise RuntimeError('Method only valid for models fit using HMC.')
 
-    def plot_divergences(self):
+    def plot_divergences(self) -> None:
         """ Parallel co-ordinates plot of sampler behaviour
 
         Highlights any divergent transitions.
