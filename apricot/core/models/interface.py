@@ -128,8 +128,8 @@ class Interface(object):
 
     def get_init(
             self,
-            stan_dict: dict,
-            init: typing.Optional[typing.Union[str, dict]]
+            init_method: typing.Optional[typing.Union[str, dict]],
+            stan_dict: dict
     ) -> typing.Union[dict, str, int]:
         """ Create dictionary of initial values for pyStan
 
@@ -159,7 +159,7 @@ class Interface(object):
         -----
         This is a wrapper for models.initialisation.get_init 
         """
-        return initialisation.get_init(self, stan_dict, init)
+        return initialisation.get_init(self, init_method, stan_dict)
 
     def hmc(
             self,

@@ -1,6 +1,8 @@
+# This file is licensed under Version 3.0 of the GNU General Public
+# License. See LICENSE for a text of the license.
+# ------------------------------------------------------------------------------
 import typing
 import numpy as np
-
 from apricot.core.logger import get_logger
 logger = get_logger()
 

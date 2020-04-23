@@ -4,6 +4,11 @@
 import typing
 import numpy as np
 from apricot.core.models.prior import ls_inv_gamma
+from apricot.core.logger import get_logger
+
+
+logger = get_logger()
+
 
 Fit_Options = typing.Optional[typing.Union[str, dict]]
 
@@ -110,8 +115,8 @@ def make_pystan_dict(
 
 def get_init(
         interface_instance: 'apricot.core.models.interface.Interface',
-        stan_dict: dict,
         init: typing.Optional[typing.Union[dict, typing.List[str], str]],
+        stan_dict: dict,
 ) -> typing.Union[dict, str, int]:
     """ Invoke various initialisation methods for the sampler.
 
@@ -155,18 +160,15 @@ def get_init(
 
     # custom init, let pyStan raise it's own exceptions if necessary
     if type(init) is dict:
+        logger.debug('Initialisation: user.')
         return init
-
-    # match init to a valid option or throw an exception
     elif type(init) is str:
-        # initialising from data requires a function
         if init.lower() == 'stable':
+            logger.debug('Initialisation: stable.')
             return _init_from_data(interface_instance, stan_dict)
-        # otherwise match the string to a valid option
         else:
+            logger.debug('Initialisation: {0}'.format(init))
             return _init_from_str(init)
-
-    # if we fall through to here, init is not a string or a dictionary
     raise TypeError(
         'Unable to parse init option of type "{0}".'.format(type(init))
     )
@@ -196,7 +198,7 @@ def _init_from_data(
     x = stan_dict['x']
     y = stan_dict['y']
     d = stan_dict['d']
-    init = {'ls': np.std(x, axis=0)}
+    init = {'ls': np.std(x, axis=0) / 3.0}
     init['amp'] = np.std(y)
     if interface_instance.noise_type[0] == 'infer':
         init['xi'] = np.std(y) / 10.0

@@ -4,11 +4,14 @@
 import typing
 import os
 import itertools
+import json
 import numpy as np
 import apricot
 from functools import wraps
+from apricot.core.logger import get_logger
 
 
+logger = get_logger()
 _ROOTDIR = os.path.dirname(os.path.abspath(apricot.__file__))
 _MODEL_CACHE = _ROOTDIR + '/cache/'
 
@@ -77,16 +80,23 @@ def _atleast2d_fview(arr: np.ndarray) -> np.ndarray:
         return _force_f_array(arr)
 
 
-def random_seed() -> int:
+def random_seed(seed: typing.Optional[int] = None) -> int:
     """ Generate pyStan Compatible Random Seed. """
-    return np.random.randint(np.iinfo(np.int32).max)
+    if seed:
+        np.random.seed(seed)
+    new_seed = np.random.randint(np.iinfo(np.int32).max)
+    logger.debug('generated random seed: {}'.format(new_seed))
+    return new_seed
 
 
 def set_seed(seed: typing.Optional[int]) -> None:
     """ Seed numpy's random state. """
     if seed is None:
-        np.random.seed(random_seed())
+        seed = random_seed()
+        logger.debug('random seed set: {}'.format(seed))
+        np.random.seed(seed)
     else:
+        logger.debug('random seed set: {}'.format(seed))
         np.random.seed(seed)
 
 
@@ -158,3 +168,7 @@ def clear_model_cache() -> None:
             if file.endswith(".pkl"):
                 print('Removed file: {0}'.format(path + file))
                 os.remove(path + file)
+
+
+def dict2str(dictionary: dict) -> str:
+    return json.dumps(dictionary, indent=4)

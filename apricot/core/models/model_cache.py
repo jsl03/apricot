@@ -4,14 +4,19 @@
 import os
 import pickle
 import six
-
 import apricot
 import pystan
-
 from apricot.core.models import build
+from apricot.core.logger import get_logger, PYSTAN_LOGGER_ENABLED
 
-# disable pystan's logger as we will run our own diagnostics
-pystan.api.logger.disabled = 1
+
+logger = get_logger()
+
+if PYSTAN_LOGGER_ENABLED:
+    pystan.api.logger.disabled = 0
+else:
+    pystan.api.logger.disabled = 1
+
 
 _ROOTDIR = os.path.dirname(os.path.abspath(apricot.__file__))
 _MODEL_CACHE = _ROOTDIR + '/cache/'
@@ -66,6 +71,7 @@ def get_filename(
 @memo
 def load_from_pickle(filename: str) -> pystan.StanModel:
     """Load a permanently cached pystan model """
+    logger.debug('Loading Stan model: {0}'.format(filename))
     return pickle.load(open(filename, 'rb'))
 
 
@@ -81,6 +87,7 @@ def compile_model(
     compiled_model = pystan.StanModel(model_code = model_code)
     if to_cache:
         with open(filename, 'wb') as destination:
+            logger.debug('Saving Stan model: {0}'.format(filename))
             pickle.dump(compiled_model, destination)
     return compiled_model
 

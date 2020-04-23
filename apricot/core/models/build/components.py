@@ -8,7 +8,7 @@ from apricot.core.models.build import filenames
 Model_Code_Type = typing.Optional[typing.Union[typing.List[str], str]]
 
 
-# TODO tidy this up; some options are deprecated (eg. is args still used?)
+# TODO tidy this up; some options are deprecated (is args still used?)
 class StanModelPart:
 
     def __init__(
@@ -108,7 +108,6 @@ class StanModelPart:
 
 
 class StanModelKernel(StanModelPart):
-
 
     def __init__(
             self,

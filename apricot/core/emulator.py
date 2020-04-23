@@ -246,7 +246,8 @@ class Emulator:
         # stability jitter
         self._delta = jitter
 
-        # TODO tidy this mess
+        # TODO assign hyperparameters properly; RQ kernel breaks this
+        # as kappa is not assigned
         internal = _assign_internal(self.kernel_type)
         self._gp = internal(
             self._x,

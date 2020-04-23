@@ -3,8 +3,11 @@
 # ------------------------------------------------------------------------------
 import typing
 import numpy as np
-
 from apricot.core import utils
+from apricot.core.logger import get_logger, log_options
+
+
+logger = get_logger()
 
 
 def run_hmc(
@@ -72,14 +75,20 @@ def run_hmc(
 
     data = interface.make_pystan_dict(x, y, jitter, fit_options, seed=seed)
     init = interface.get_init(init_method, data)
-    inits = [init] * chains  # need init for each chain
+
+    # if init is a dict, it needs to be cloned for each chain
+    if type(init) is dict:
+        init_sampler = [init] * chains
+    else:
+        init_sampler = init
+
     control = {
         'adapt_delta': adapt_delta,
         'max_treedepth': max_treedepth,
     }
     opts = {
         'data': data,
-        'init': inits,
+        'init': init_sampler,
         'control': control,
         'pars': interface._pars_to_sample,
         'chains': chains,
@@ -87,10 +96,15 @@ def run_hmc(
         'thin': thin,
         'seed': seed,
     }
+
+    logger.debug(
+        'Initialising sampler with: \n{0}'.format(log_options(opts))
+    )
+
     result = interface.pystan_model.sampling(**opts)
     samples, info = _hmc_post_internal(result, permute=permute, seed=seed)
     info['seed'] = seed
-    info['inits'] = inits
+    info['init'] = init_sampler
     info['passed_rhat'] = _check_rhat(info['rhat'])
     info['passed_divergences'] = _check_divergent(info['divergent'])
     info['passed_saturation'] = _check_tree_saturation(
@@ -147,8 +161,8 @@ def _hmc_post_internal(
     # get the rhat values and number of effective samples
     for param in rows:
         idx = rows.index(param)
-        rhat[param] = result.summary()['summary'][:,rhat_pos][idx]
-        n_eff[param] = result.summary()['summary'][:,neff_pos][idx]
+        rhat[param] = result.summary()['summary'][:, rhat_pos][idx]
+        n_eff[param] = result.summary()['summary'][:, neff_pos][idx]
 
         # slice out the samples
         for chain in range(nchains):
@@ -167,10 +181,16 @@ def _hmc_post_internal(
         divergent[a: b] = sampler_params[chain]['divergent__']
         e_bfmi[chain] = _calc_ebfmi(sampler_params[chain]['energy__'])
 
-    # permute on request, using random seed if provided
     if permute:
-        tup = _permute_aligned((samples, chain_id, excess_treedepth, divergent),seed)
-        samples, chain_id, treedepth, divergent = tup
+        samples, chain_id, treedepth, divergent = _permute_aligned(
+            (
+                samples,
+                chain_id,
+                excess_treedepth,
+                divergent
+            ),
+            seed
+        )
 
     info = {
         'method': 'hmc',

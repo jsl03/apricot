@@ -13,6 +13,7 @@ from apricot.core.models.build.code_snippets import (
 )
 
 
+# TODO use parse module instead
 def find_kernel(name, warping):
     try:
         kernel_options = AVAILABLE[name]

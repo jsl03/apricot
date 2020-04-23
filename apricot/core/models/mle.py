@@ -4,6 +4,10 @@
 import typing
 import numpy as np
 from apricot.core import utils
+from apricot.core.logger import get_logger, log_options
+
+
+logger = get_logger()
 
 
 def run_mle(
@@ -83,6 +87,11 @@ def run_mle(
         'iter': max_iter,
         'seed': seed,
     }
+    logger.debug(
+        'Initialising optimisation routine with: \n{0}'.format(
+            log_options(opts)
+        )
+    )
     result = _mle_internal(interface, opts, restarts)
     parameters = result['par']
     info = {
@@ -96,6 +105,13 @@ def run_mle(
     return parameters, info
 
 
+def _assign_new_seed(opts):
+    current_seed = opts['seed']
+    new_seed = utils.random_seed(current_seed)
+    opts['seed'] = new_seed
+    return opts
+
+
 def _mle_internal(
         interface: 'apricot.core.models.interface.Interface',
         opts: dict,
@@ -105,33 +121,50 @@ def _mle_internal(
     best = -np.inf
     result = None
 
-    # options for first restart
-    opts_0 = opts
-
-    # subsequent restarts always use random initialisation
-    if restarts > 1:
-        opts_n = opts.copy()
-        opts_n['init'] = 'random'
+    # prevent mutating original options dictionary in case we need it
+    # somewhere later (where?)
+    opts_n = opts.copy()
 
     for r in range(restarts):
+        # prevent using the same seed repeatedly, but make sure logger can keep
+        # track of state
+        if r > 0:
+            opts_n = _assign_new_seed(opts_n)
+            logger.debug('Restarting optimiser (r = {0}) new seed: {1}'.format(
+                r, opts_n['seed']
+            ))
 
-        if r == 0:
-            opts_to_use = opts_0
-        else:
-            opts_to_use = opts_n
-
+        # sometimes the optimiser exits with runtime error, due to eg.
+        # line search failure (l-bfgs only) or cholesky decompose being
+        # called on something that isnt PSD
         try:
-            result = interface.pystan_model.optimizing(**opts_to_use)
+            result = interface.pystan_model.optimizing(**opts_n)
+            logger.debug(
+                'Optimiser exited normally [lp__ : {0}]'.format(
+                    result['value']
+                )
+            )
             if result['value'] > best:
                 best = result['value']
                 result = result
 
-        # TODO save RTE and pass through to info dictionary
-        except RuntimeError:
-            pass
+        except RuntimeError as rte:
+            logger.debug(
+                'RuntimeError encountered (r = {1}): {2}'.format(
+                    opts_n['algorithm'], r, rte
+                )
+            )
+            exception = rte
 
-        # TODO fix: something prevented optimiser from succeeding
-        if result is None:
-            raise RuntimeError from None
+        if (r == 0) & (restarts > 1):
+            opts_n['init'] = 'random'
+            logger.debug(
+                'Subsequent initialisations changed to random (repeats > 1)'
+            )
+           
+    # TODO at the moment this stores only the *last* exception
+    # encountered above. Better to raise custom RTE and print a list?
+    if result is None:
+        raise exception
 
     return result
