@@ -9,8 +9,8 @@ from apricot.core.sampling import sample_hypercube
 
 
 def optimise(
-        f: callable,
-        f_jac: callable,
+        f: typing.Callable,
+        f_jac: typing.Callable,
         d: int,
         x0: typing.Optional[np.ndarray] = None,
         grid: typing.Optional[np.ndarray] = None,
@@ -57,14 +57,7 @@ def optimise(
     result : dict
     """
     if x0 is None:
-        opts = {
-            'grid': grid,
-            'grid_size': grid_size,
-            'grid_method': grid_method,
-            'grid_options': grid_options,
-            'seed': seed,
-        }
-        x0 = grid_search(f, d, **opts)
+        x0 = grid_search(f, d, grid, grid_size, grid_method, grid_options, seed)
     result = minimize(
         fun=f_jac,
         x0=x0,
@@ -83,7 +76,7 @@ def optimise(
 
 
 def grid_search(
-        f: callable,
+        f: typing.Callable,
         d: int,
         grid: typing.Optional[np.ndarray] = None,
         grid_size: typing.Optional[int] = None,

@@ -13,6 +13,7 @@
 #include "gp_m52_kernel.h"
 #include "gp_m32_kernel.h"
 #include "gp_rq_kernel.h"
+#include "gp_eq_mle_objective.h"
 
 /* Pybind stuff */ 
 
@@ -132,4 +133,16 @@ PYBIND11_MODULE(gp_internal, m)
                  return "<apricot.core.GpRqKernel>";
              }
              );
+
+    py::class_<make_mle_objective>(m, "make_mle_objective")
+            .def(py::init<
+                 Eigen::MatrixXd,
+                 Eigen::VectorXd,
+                 double
+                 >())
+            .def("__call__", &make_mle_objective::objective)
+            .def("__repr__",
+                 [](const make_mle_objective &a) {
+                         return "<apricot.core.mleObjectiveFunction>";
+                 });
 }

@@ -8,8 +8,6 @@ from apricot.core.logger import get_logger
 
 
 logger = get_logger()
-
-
 Fit_Options = typing.Optional[typing.Union[str, dict]]
 
 
@@ -93,7 +91,6 @@ def make_pystan_dict(
     if interface_instance.noise_type[0] == 'infer':
         data['xi_scale'] = np.std(y) / 10.0
 
-    # otherwise xi is fixed to a supplied value
     elif interface_instance.noise_type[0] == 'deterministic':
         data['xi'] = interface_instance.noise_type[1]
 
@@ -103,13 +100,11 @@ def make_pystan_dict(
             data['alpha_warp_sigma'] = np.full(d, 0.5)
             data['beta_warp_mu'] = np.zeros(d, dtype=np.float64)
             data['beta_warp_sigma'] = np.full(d, 0.5)
-
         elif interface_instance.warping == 'sigmoid':
             data['alpha_warp_mu'] = np.full(d, 2.0)
             data['alpha_warp_sigma'] = np.full(d, 0.5)
             data['beta_warp_mu'] = np.full(d, 2.0)
             data['beta_warp_sigma'] = np.full(d, 0.5)
-
     return data
 
 
@@ -158,7 +153,7 @@ def get_init(
     if init is None:
         init = 'stable'
 
-    # custom init, let pyStan raise it's own exceptions if necessary
+    # custom init, let pyStan raise its own exceptions if necessary
     if type(init) is dict:
         logger.debug('Initialisation: user.')
         return init

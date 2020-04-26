@@ -8,6 +8,9 @@ from apricot.core.models.build import noise_parts
 from apricot.core.models.build import kernel_parts
 
 
+# TODO some mypy type signatures messed up in this file
+
+
 def parse_kernel(kernel_type: str):
     """Parse requested kernel option."""
     if kernel_type in kernel_parts.AVAILABLE:
@@ -18,9 +21,9 @@ def parse_kernel(kernel_type: str):
             kernel_type,
             kernel_parts.AVAILABLE
         )
-       
 
-def parse_noise(noise_type: typing.Optional[typing.Union[float, str]]):
+
+def parse_noise(noise_type: typing.Any) -> typing.Union[str, float]:
     """ Parse requested noise option.
 
     Parameters
@@ -42,14 +45,17 @@ def parse_noise(noise_type: typing.Optional[typing.Union[float, str]]):
     """
     if noise_type is None:
         noise = 0.0
+    # find out how to tell mypy this is a str
     elif type(noise_type) is str:
-        noise = _parse_noise_str(noise_type.lower())
+        as_str = noise_type.lower()
+        noise = _parse_noise_str(as_str)
+    # find out how to tell mypy this is a float
     else:
         noise = _parse_noise_float(noise_type)
     return _parse_noise_internal(noise)
 
 
-def _parse_noise_str(as_str: str):
+def _parse_noise_str(as_str: str) -> typing.Union[float, str]:
     """ Parse noise options that are strings. """
     if as_str == 'zero' or as_str == 'none':
         return 0.0
@@ -62,8 +68,8 @@ def _parse_noise_str(as_str: str):
     )
 
 
-def _parse_noise_float(noise_type: float):
-    """ Parse noise options that are floating point numbers. """
+def _parse_noise_float(noise_type: typing.Any) -> float:
+    """ Parse noise options that can be treated as floating point numbers. """
     try:
         noise = float(noise_type)
     except ValueError:
@@ -74,7 +80,7 @@ def _parse_noise_float(noise_type: float):
     return noise
 
 
-def _parse_noise_internal(noise: typing.Union[str, float]):
+def _parse_noise_internal(noise: typing.Union[str, typing.Optional[float]]):
     """ Assign noise options to required format. """
     if type(noise) is float:
         noise_option = 'deterministic'

@@ -109,8 +109,10 @@ def inv_gamma_pdf(x: float, alpha: float, beta: float):
     if x <= 0:
         return 0.0
     else:
-        y=((beta**alpha)/special.gamma(alpha)) * x**(-(alpha + 1.0)) * np.exp(-beta*(1.0 / x))
-        return y
+        return (
+            ((beta**alpha)/special.gamma(alpha)) *
+            x ** (-(alpha + 1.0)) * np.exp(-beta*(1.0 / x))
+        )
 
 
 def inv_gamma_tail(

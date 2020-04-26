@@ -7,7 +7,7 @@ from apricot.core import utils
 from apricot.core.models import build
 from apricot.core.models import parse
 from apricot.core.models import initialisation
-from apricot.core.models import mle
+from apricot.core.models import map as maxap  # avoid masking map
 from apricot.core.models import hmc
 from apricot.core.models import model_cache
 
@@ -90,7 +90,7 @@ class Interface(object):
             y: np.ndarray,
             jitter: float = 1e-10,
             fit_options: typing.Optional[dict] = None,
-            seed: typing.Optional[float] = None
+            seed: typing.Optional[int] = None
     ) -> dict:
         """ Construct the pystan 'data' dictionary
 
@@ -111,7 +111,7 @@ class Interface(object):
         stan_dict : dict
             pystan data dictionary. The pystan model is then executed via
             <instance>.sampling(data=stan_dict) for hmc or
-            <instance>.optimizing(data = stan_dict) for mle.
+            <instance>.optimizing(data = stan_dict) for map.
 
         Notes
         -----
@@ -174,7 +174,7 @@ class Interface(object):
             max_treedepth: int = 10,
             seed: typing.Optional[int] = None,
             permute: bool = True,
-            init_method: str = 'stable',
+            init_method: typing.Union[dict, str, int] = 'stable',
     ) -> typing.Union[np.ndarray, dict]:
         """ Sample model hyperparameters using Hamiltonian Monte-Carlo
 
@@ -206,7 +206,6 @@ class Interface(object):
         init : {dict, str}
             * if init is a dict, it is assumed to contain an initial value for
                 each of the parameters to be sampled by the pyStan model.
-            * if init is None, the init method defaults to 'stable'.
             * if init is a string, it is matched to one of the following:
                 - 'stable' : initialise from data. Lengthscales are initialised
                     to the standard deviation of the respective column of x.
@@ -243,13 +242,13 @@ class Interface(object):
         )
         return parameters, info
 
-    def mle(
+    def map(
             self,
             x: np.ndarray,
             y: np.ndarray,
             jitter: float = 1e-10,
             fit_options:  typing.Optional[dict] = None,
-            init_method: typing.Union[dict, str] = 'stable',
+            init_method: typing.Union[dict, str, int] = 'stable',
             algorithm: str = 'Newton',
             restarts: int = 10,
             max_iter: int = 250,
@@ -302,9 +301,9 @@ class Interface(object):
 
         Notes
         -----
-        This is a wrapper for models.mle.run_mle
+        This is a wrapper for models.map.run_map
         """
-        parameters, info = mle.run_mle(
+        parameters, info = maxap.run_map(
             self,
             x,
             y,

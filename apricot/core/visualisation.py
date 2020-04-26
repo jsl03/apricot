@@ -90,7 +90,7 @@ def plot_parameter(
         ax0.set_ylabel('density')
         ax1.set_xlabel('iteration #')
         ax1.set_ylabel(param_name)
-        ax1.set_xlim(0, data.shape[0]) 
+        ax1.set_xlim(0, data.shape[0])
     plt.tight_layout()
 
 

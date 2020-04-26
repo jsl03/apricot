@@ -23,7 +23,7 @@ def run_hmc(
         max_treedepth: int = 10,
         seed: typing.Optional[int] = None,
         permute: bool = True,
-        init_method: str = 'stable',
+        init_method: typing.Union[str, int] = 'stable',
 ) -> typing.Union[np.ndarray, dict]:
     """Run Stan's HMC algorithm for the provided model.
 

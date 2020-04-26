@@ -8,7 +8,7 @@ import sys
 import setuptools
 
 
-__version__ = '0.91'
+__version__ = '0.93'
 
 
 class get_pybind_include(object):
@@ -127,6 +127,7 @@ setup(
         'apricot/src/gp_m52_kernel.h',
         'apricot/src/gp_m32_kernel.h',
         'apricot/src/gp_rq_kernel.h',
+        'apricot/src/gp_eq_mle_objective.h'
     ],
     zip_safe=False,
 )

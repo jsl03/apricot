@@ -66,7 +66,7 @@ def _format_input(xstar: np.ndarray, d: int) -> np.ndarray:
     return xstar_f
 
 
-def defined_on_index(method: callable) -> callable:
+def defined_on_index(method: typing.Callable) -> typing.Callable:
     """ Decorator for methods accepting arrays of points from the index.
 
     Applies _format_inputs to arrays passed to the wrapped method, ensuring
@@ -93,9 +93,10 @@ def defined_on_index(method: callable) -> callable:
 
 
 def _assign_internal(kernel_type: str) -> Internal_Gp_Type:
+    """ Assign internal GP based on requested kernel """
     assign = {
         'eq': gp_internal.GpEqKernel,
-        'eq_flat': gp_internal.GpEqKernel,
+        'eq_flat': gp_internal.GpEqKernel,  # for debug / testing only
         'm52': gp_internal.GpM52Kernel,
         'm32': gp_internal.GpM32Kernel,
         'rq': gp_internal.GpRqKernel
@@ -103,7 +104,7 @@ def _assign_internal(kernel_type: str) -> Internal_Gp_Type:
     return assign[parse.parse_kernel(kernel_type)]
 
 
-class Emulator:
+class Emulator(object):
 
     """ Gaussian Process Emulator.
 
@@ -235,19 +236,16 @@ class Emulator:
         self.mean_type = mean_function_type
         self.hyperparameters = hyperparameters
 
+        # ----------------------------------------------------------------------
+        # TODO: assign hyperparameters properly; RQ kernel breaks this approach
+        # as kappa is not extracted / assigned
         try:
             self._amp = hyperparameters['amp']
             self._ls = hyperparameters['ls']
             self._sigma0 = hyperparameters['xi']
-
         except KeyError as missing_key:
             raise exceptions.MissingParameterError(str(missing_key)) from None
-
-        # stability jitter
         self._delta = jitter
-
-        # TODO assign hyperparameters properly; RQ kernel breaks this
-        # as kappa is not assigned
         internal = _assign_internal(self.kernel_type)
         self._gp = internal(
             self._x,
@@ -257,17 +255,20 @@ class Emulator:
             self._sigma0,
             self._delta,
         )
+        # ----------------------------------------------------------------------
 
         self.n, self.d = x.shape
         self.m = self._amp.shape[0]
 
-        # HACK guess the fit method from m if not explicitly provided
+        # HACK guess the fit method from m if not explicitly provided; if only
+        # a single hyperparameter sample is present we can assume it was
+        # optimised
         if info is None:
             info = {}
             if self.m > 1:
                 info['method'] = 'hmc'
             else:
-                info['method'] = 'mle'
+                info['method'] = 'map'
         self.info = info
 
     @property
@@ -851,7 +852,7 @@ class Emulator:
         Computer Physics Communications, 181(2), pp.259-270.
         """
 
-        #TODO: snake_case names for variables in here
+        # TODO: snake_case names for variables in here
         x = sampling.sample_hypercube(n, 2*self.d, method=method, seed=seed)
         A = x[:, :self.d]
         B = x[:, self.d:]

@@ -36,7 +36,7 @@ def mad(arr: np.ndarray, axis: typing.Optional[int] = None) -> np.ndarray:
     return np.median(deviation, axis=axis)
 
 
-def maybe(func: callable) -> callable:
+def maybe(func: typing.Callable) -> typing.Callable:
     """ Decorator for functions which fail if any arguments are None.
 
     If any arguments passed to a function wrapped with maybe are None,
@@ -113,6 +113,7 @@ def is_string(s: typing.Optional[typing.Any]) -> bool:
 
 def join_strings(seq: typing.Sequence[typing.Optional[str]]) -> str:
     """ Join all of the elements of seq that are not None with newlines. """
+    # TODO fix mypy type here
     return '\n'.join([elem for elem in seq if is_string(elem)])
 
 

@@ -4,6 +4,7 @@
 import os
 import pickle
 import six
+import typing
 import apricot
 import pystan
 from apricot.core.models import build
@@ -25,7 +26,7 @@ _MODEL_CACHE = _ROOTDIR + '/cache/'
 Model_Part_Type = build.components.StanModelPart
 
 
-def memo(func: callable) -> callable:
+def memo(func: typing.Callable) -> typing.Callable:
     """ Simple session cache decorator.
 
     Prevents repeatedly unpickling the same model over and over.

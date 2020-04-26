@@ -4,16 +4,16 @@
 import typing
 import numpy as np
 from apricot.core import emulator
-from apricot.core.models import interface, glue
+from apricot.core.models import interface, glue, mle
 
 
 def fit(
         x: np.ndarray,
         y: np.ndarray,
-        kernel: typing.Optional[str] = 'eq',
-        mean: typing.Optional[str] = 'zero',
-        noise: typing.Optional[typing.Union[str, float]] = 'zero',
-        method: typing.Optional[str] = 'hmc',
+        kernel: str = 'eq',
+        mean: str = 'zero',
+        noise: typing.Union[str, float] = 'zero',
+        method: str = 'hmc',
         **kwargs,
 ) -> emulator.Emulator:
     """ Fit a Gaussian Process emulator to data.
@@ -23,8 +23,14 @@ def fit(
     'noise'.
 
     Valid fit methods are 'hmc', for Hamiltonian Monte-Carlo sampling from the
-    posterior distribution of the model hyperparameters, or 'mle' for maximum
-    log-likelihood estimation.
+    posterior distribution of the model hyperparameters, 'map' for maximum
+    a-posteriori probability estimation, and 'mle' for maximimum marginal
+    likelihood estimation.
+
+    'map' and 'mle' are both modal approximations that use some from of
+    numerical optimisation to identify the hyperparameters with the highest
+    posterior probability (crucially, including a prior) and marginal
+    likelihood, respectively.
 
     Parameters
     ----------
@@ -36,26 +42,31 @@ def fit(
     kernel : {'expq'}
         String describing the desired kernel type:
         * 'expq' Exponentiated quadratic ("squared exponential").
-        * 'm52' Matern kernel with smoothness parameter nu=5/2
+        * 'm52' Matern kernel with smoothness parameter nu=5/2.
+        * 'm32' Matern kernel with smoothness parameter nu=3/2.
+        * 'rq' Rational quadratic kernel.
     mean : {None}
         String describing the desired mean function.
         * {None, 'zero', 0} Zero mean function
     noise : {None}
         String describing the desired noise model.
         * {None, 'zero', 0} Zero (noiseless) model.
-    method : {'hmc', 'mle'}
+    method : {'hmc', 'map', mle'}
         string describing the desired fit method:
         * 'hmc' Hamiltonian Monte-Carlo. Uses Stan's implementation of the
             No-U-Turn Sampler (NUTS).
-        * 'mle' Maximum Log Likelihood Estimation. Strictly speaking this aims
-            to find the maximum log *marginal* likelihood using numerical
-            optimisation.
+        * 'map' Maximum a-posteriori estimation (modal approximation). Maximise
+            the posterior probability of the hyperparameters using numerical
+            optimisation. Uses one of Stan's gradient based optimisers.
+        * 'mle' Maximum Log Likelihood Estimation. Maximise the log *marginal*
+            likelihood using numerical optimisation. Currently only valid with
+            kernel = 'eq'.
     init_method : {None, 'stable', 'zero', 'random', dict}
         Determines initialisation method. If method = 'hmc', fit_method
         determines the start points for each of the requested sample chains.
-        If method = 'mle', fit_method determines the start point for the first
+        If method = 'map', fit_method determines the start point for the first
         optimisation only since subsequent restarts are initialised randomly.
-        Defaults to = 'stable'.
+        Ignored if method = 'mle'. Defaults to = 'stable'.
         * None : defaults to 'stable'.
         * 'stable' : "stable" initialise parameters from data:
             - The marginal standard deviation is initialised to the sample
@@ -94,15 +105,15 @@ def fit(
         Valid only if method = 'hmc'. If True, permute the samples.
         Default = True.
     algorithm : str, optional
-        Valid only if fit_method = 'mle'. String specifying which of Stan's
+        Valid only if fit_method = 'map'. String specifying which of Stan's
         gradient based optimisation algorithms to use. Default = 'Newton'.
     restarts : int, optional
-        Valid only if fit_method = 'mle'. The number of restarts to use.
+        Valid only if fit_method = 'map'. The number of restarts to use.
         The optimisation will be repeated this many times and the
         hyperparameters with the highest log-likelihood will be returned.
         Default=10.
     max_iter : int, optional
-        Valid only if fit_method = 'mle'. The maximum allowable number of
+        Valid only if fit_method = 'map'. The maximum allowable number of
         iterations for the chosen optimisation algorithm. Default = 250.
 
     Returns
@@ -116,8 +127,11 @@ def fit(
 
     if method.lower() == 'hmc':
         return _fit_hmc(interface_instance, x, y, **kwargs)
+    elif method.lower() == 'map':
+        return _fit_map(interface_instance, x, y, **kwargs)
     elif method.lower() == 'mle':
-        return _fit_mle(interface_instance, x, y, **kwargs)
+        jitter = kwargs['jitter'] if 'jitter' in kwargs else 1e-10
+        return _fit_mle(interface_instance, x, y, jitter)
     else:
         raise ValueError("Unrecognised fit method: '{0}'.".format(method))
 
@@ -135,7 +149,7 @@ def _fit_hmc(
         max_treedepth: int = 10,
         seed: typing.Optional[int] = None,
         permute: bool = True,
-        init_method: typing.Union[str, int] = 'stable',
+        init_method: typing.Union[dict, str, int] = 'stable',
 ) -> emulator.Emulator:
     """ Run Stan's HMC algorithm for the provided model.
 
@@ -169,9 +183,8 @@ def _fit_hmc(
         Random seed.
     permute : bool, optional
         If True, permute the samples.
-    init_method : {None, 'stable', 'zero', 'random', dict}
+    init_method : {'stable', 'zero', 'random', dict}
         Determines initialisation method for each chain. Default = 'stable'.
-        * None : defaults to 'stable'.
         * 'stable' : "stable" initialise parameters from data:
             - The marginal standard deviation is initialised to the sample
                 marginal stabard deviation of the supplied function responses,
@@ -220,18 +233,19 @@ def _fit_hmc(
     return emulator_instance
 
 
-def _fit_mle(
+def _fit_map(
         interface_instance: interface.Interface,
         x: np.ndarray,
         y: np.ndarray,
         jitter: float = 1e-10,
-        init_method: typing.Union[dict, str] = 'stable',
+        init_method: typing.Union[dict, str, int] = 'stable',
         algorithm: str = 'Newton',
-        restarts: int = 10,
+        restarts: int = 5,
         max_iter: int = 250,
         seed: typing.Optional[int] = None,
 ) -> emulator.Emulator:
-    """ Optimise log likelihood of the hyperparameters for the provided model.
+    """ Optimise the posterior probability of the hyperparameters for the
+    provided model.
 
     Parameters
     ----------
@@ -244,11 +258,10 @@ def _fit_mle(
         (n,) array of responses corresponding to each row of x.
     jitter : float, optional
         Magnitude of stability jitter. Default = 1e-10.
-    init_method : {None, 'stable', 'zero', 'random', dict}
+    init_method : {'stable', 'zero', 'random', dict}
         Determines initialisation method. Note that for restarts > 1,
         each optimisation routine after the first will be initialised with
         init_method = 'random'. Default = 'stable'.
-        * None : defaults to 'stable'.
         * 'stable' : "stable" initialise parameters from data:
             - The marginal standard deviation is initialised to the sample
                 marginal stabard deviation of the supplied function responses,
@@ -282,7 +295,7 @@ def _fit_mle(
     -------
     Emulator : apricot.emulator.Emulator instance
     """
-    result, info = interface_instance.mle(
+    result, info = interface_instance.map(
         x,
         y,
         jitter,
@@ -292,7 +305,22 @@ def _fit_mle(
         max_iter=max_iter,
         seed=seed
     )
-    hyperparameters = glue.mle_glue(interface_instance, result, info)
+    hyperparameters = glue.map_glue(interface_instance, result, info)
+    emulator_instance = emulator.Emulator(
+        x,
+        y,
+        hyperparameters,
+        info=info,
+        kernel_type=interface_instance.kernel_type,
+        mean_function_type=interface_instance.mean_function_type,
+        jitter=jitter
+    )
+    return emulator_instance
+
+
+def _fit_mle(interface_instance, x, y, jitter):
+    """ Optimise the log marginal likelihood for the provided model """
+    hyperparameters, info = mle.run_mle(interface_instance, x, y, jitter)
     emulator_instance = emulator.Emulator(
         x,
         y,

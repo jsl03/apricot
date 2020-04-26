@@ -87,12 +87,12 @@ def hmc_glue(
 
 
 @utils.maybe
-def mle_glue(
+def map_glue(
         interface: 'apricot.core.models.interface.Interface',
         opt_result: typing.Dict[str, typing.Any],
         info: dict,
 ) -> dict:
-    """ Formatting for hyperparameters obtained via Stan using MLE.
+    """ Formatting for hyperparameters obtained via Stan using map.
 
     Parameters
     ----------
@@ -101,7 +101,7 @@ def mle_glue(
     opt_result : dict
         Dictionary of optimised hyperparameters.
     info : dict
-        Dictionary of diagnostic information supplied by interface.mle
+        Dictionary of diagnostic information supplied by interface.map
 
     Returns
     -------
