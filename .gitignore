@@ -1,3 +1,6 @@
-.mypy_cache
+*.pyo
+*.pyc
+.mypy_cache/
 build/
+dist/
 tmp/
