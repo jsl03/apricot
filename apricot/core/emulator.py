@@ -2,8 +2,8 @@
 # License. See LICENSE for a text of the license.
 # ------------------------------------------------------------------------------
 import typing
-import numpy as np
 from functools import wraps
+import numpy as np
 from apricot.core import gp_internal
 from apricot.core import sampling
 from apricot.core import optimisation
@@ -13,8 +13,7 @@ from apricot.core import visualisation
 from apricot.core.models import parse
 
 
-Internal_Gp_Type = typing.Union[
-    gp_internal.GpEqKernel,
+InternalGpType = typing.Union[
     gp_internal.GpEqKernel,
     gp_internal.GpM52Kernel,
     gp_internal.GpM32Kernel,
@@ -92,7 +91,7 @@ def defined_on_index(method: typing.Callable) -> typing.Callable:
     return wrapper
 
 
-def _assign_internal(kernel_type: str) -> Internal_Gp_Type:
+def _assign_internal(kernel_type: str):
     """ Assign internal GP based on requested kernel """
     assign = {
         'eq': gp_internal.GpEqKernel,
@@ -104,7 +103,7 @@ def _assign_internal(kernel_type: str) -> Internal_Gp_Type:
     return assign[parse.parse_kernel(kernel_type)]
 
 
-class Emulator(object):
+class Emulator:
 
     """ Gaussian Process Emulator.
 
@@ -202,9 +201,9 @@ class Emulator(object):
             y: np.ndarray,
             hyperparameters: typing.Dict[str, np.ndarray],
             info: typing.Optional[dict] = None,
-            kernel_type: typing.Optional[str] = 'eq',
-            mean_function_type: typing.Optional[str] = 'zero',
-            jitter: typing.Optional[float] = 1e-10,
+            kernel_type: str = 'eq',
+            mean_function_type: str = 'zero',
+            jitter: float = 1e-10,
     ) -> None:
         """ Gaussian Process emulator.
 
@@ -237,24 +236,40 @@ class Emulator(object):
         self.hyperparameters = hyperparameters
 
         # ----------------------------------------------------------------------
-        # TODO: assign hyperparameters properly; RQ kernel breaks this approach
-        # as kappa is not extracted / assigned
+        # TODO: refactor this
         try:
             self._amp = hyperparameters['amp']
             self._ls = hyperparameters['ls']
             self._sigma0 = hyperparameters['xi']
+            if self.kernel_type == 'rq':
+                self._kappa = hyperparameters['kappa']
         except KeyError as missing_key:
             raise exceptions.MissingParameterError(str(missing_key)) from None
         self._delta = jitter
         internal = _assign_internal(self.kernel_type)
-        self._gp = internal(
-            self._x,
-            self._y,
-            self._amp,
-            self._ls,
-            self._sigma0,
-            self._delta,
-        )
+        if self.kernel_type == 'rq':
+            args = (
+                self._x,
+                self._y,
+                self._amp,
+                self._ls,
+                self._kappa,
+                self._sigma0,
+                self._delta,
+            )  # type: ignore
+        else:
+            # for some reason mypy wants the type signature of the internal rq
+            # kernel here and is expecting kappa to be present -- I think this
+            # warning can probably be ignored.
+            args = (
+                self._x,
+                self._y,
+                self._amp,
+                self._ls,
+                self._sigma0,
+                self._delta,
+            )  # type: ignore
+        self._gp = internal(*args)  # type: ignore
         # ----------------------------------------------------------------------
 
         self.n, self.d = x.shape

@@ -1,6 +1,7 @@
 import numpy as np
 from apricot.core.utils import mad
 
+
 _twopi = np.pi * 2.0
 
 
@@ -180,19 +181,22 @@ class TestFunction:
 # Wing weight function
 # -----------------------------------------------------------------------------
 
+
 class Wing_Weight(TestFunction):
     """ Forrester, A., Sobester, A., & Keane, A. (2008)
-    
+
     Notes
     -----
     https://www.sfu.ca/~ssurjano/wingweight.html
     """
+
     def __init__(self, noise=None):
         self.bounds = _bounds_wing_weight
         self.f = _f_wing_weight
         self.noise = noise
         self._normalised = False
 
+       
 _bounds_wing_weight = [
     (150, 200),
     (220, 300),
@@ -205,34 +209,38 @@ _bounds_wing_weight = [
     (1700, 2500),
     (0.025, 0.08)]
 
+
 def _f_wing_weight(x):
-    tmp1 = 0.036*x[:,0]**0.758
-    tmp2 = x[:,1]**0.0035
-    tmp3 = (x[:,2] / (_cosd(x[:,3])**2))**0.6
-    tmp4 = x[:,4]**0.006 * x[:,5]**0.04
-    tmp5 = (100 * x[:,6] / _cosd(x[:,3]))**(-0.3)
-    tmp6 = (x[:,7]*x[:,8])**0.49
-    return tmp1 * tmp2 * tmp3 * tmp4 * tmp5 * tmp6 + (x[:,0]* x[:,9])
+    tmp1 = 0.036*x[:, 0]**0.758
+    tmp2 = x[:, 1]**0.0035
+    tmp3 = (x[:, 2] / (_cosd(x[:, 3])**2))**0.6
+    tmp4 = x[:, 4]**0.006 * x[:, 5]**0.04
+    tmp5 = (100 * x[:, 6] / _cosd(x[:, 3]))**(-0.3)
+    tmp6 = (x[:, 7]*x[:, 8])**0.49
+    return tmp1 * tmp2 * tmp3 * tmp4 * tmp5 * tmp6 + (x[:, 0] * x[:, 9])
 
 # -----------------------------------------------------------------------------
 # Circuit function
 # -----------------------------------------------------------------------------
 
+
 class Circuit(TestFunction):
     """ Ben-Ari, E. N., & Steinberg, D. M. (2007)
-    
+
     Notes
     -----
     https://www.sfu.ca/~ssurjano/otlcircuit.html
     """
+
     def __init__(self, noise=None):
         self.bounds = _bounds_circuit
         self.f = _f_circuit
         self.noise = noise
         self._normalised = False
 
+       
 _bounds_circuit = [
-    (50,150),
+    (50, 150),
     (25, 70),
     (0.5, 3),
     (1.2, 2.5),
@@ -240,44 +248,51 @@ _bounds_circuit = [
     (50, 300),
 ]
 
+
 def _f_circuit(x):
-    vb1 = (12.0 * x[:,1]) / (x[:,0] + x[:,1])
-    tmp1 = ((vb1 + 0.74) * x[:,5] * (x[:,4] + 9.0)) / ((x[:,5]*(x[:,4] + 9)) + x[:,2])
-    tmp2 = (11.35 * x[:,2]) / ((x[:,5]*(x[:,4] + 9.0)) + x[:,2])
-    tmp3 = (0.74 * x[:,2] * x[:,5] * (x[:,4] + 9.0)) / (((x[:,5]*(x[:,4] + 9)) + x[:,2])*x[:,3])
+    vb1 = (12.0 * x[:, 1]) / (x[:, 0] + x[:, 1])
+    tmp1 = ((vb1 + 0.74) * x[:, 5] * (x[:, 4] + 9.0)) / ((x[:, 5] * (x[:, 4] + 9)) + x[:, 2])
+    tmp2 = (11.35 * x[:, 2]) / ((x[:, 5]*(x[:, 4] + 9.0)) + x[:,2])
+    tmp3 = (0.74 * x[:, 2] * x[:, 5] * (x[:, 4] + 9.0)) / (((x[:, 5] * (x[:, 4] + 9)) + x[:, 2]) * x[:, 3])
     return tmp1 + tmp2 + tmp3
 
 # -----------------------------------------------------------------------------
-# Branin function 
+# Branin function
 # -----------------------------------------------------------------------------
+
 
 class Branin(TestFunction):
     """ Dixon, L. C. W., & Szego, G. P. (1978).
-    
+
     Notes
     -----
     See: https://www.sfu.ca/~ssurjano/branin.html
     """
+
     def __init__(self, noise=None):
         self.bounds = _bounds_branin
         self.f = _f_branin
         self.noise = noise
         self._normalised = False
 
+
 _bounds_branin = [
     (-5, 10),
     (0, 15),
 ]
+
+
 def _f_branin(x):
     if x.ndim == 1:
         x = x.reshape(1, -1)
-    tmp1 = (-1.275*(x[:,0]**2)/(np.pi**2) + 5*x[:,0]/np.pi + x[:,1] - 6)**2
-    tmp2 = (10 - 5 / (np.pi*4)) * np.cos(x[:,0]) + 10
+    tmp1 = (-1.275*(x[:, 0]**2)/(np.pi**2) + 5*x[:, 0]/np.pi + x[:, 1] - 6)**2
+    tmp2 = (10 - 5 / (np.pi*4)) * np.cos(x[:, 0]) + 10
     return tmp1 + tmp2
 
 # -----------------------------------------------------------------------------
-# Cosines function 
+# Cosines function
 # -----------------------------------------------------------------------------
+
 
 class Cosines(TestFunction):
     """ L. Breiman, and A. Cutler (1993).
@@ -289,11 +304,13 @@ class Cosines(TestFunction):
     -----
     Sometimes "mixture of cosines" or "cosine mixture".
     """
+
     def __init__(self, d=2, noise=None):
         self.bounds = [(-1, 1) for _ in range(d)]
         self.f = _f_cosines
         self.noise = noise
         self._normalised = False
+
 
 def _f_cosines(x):
     tmp1 = -0.1 * np.sum(np.cos(5.0 * np.pi * x), axis=1)
@@ -548,6 +565,7 @@ def _f_camel6(x):
 # Ishigami function 
 # -----------------------------------------------------------------------------
 
+
 class Ishigami(TestFunction):
     """ Ishigami, T., & Homma, T. (1990)
 
@@ -558,17 +576,61 @@ class Ishigami(TestFunction):
 
     See: https://www.sfu.ca/~ssurjano/ishigami.html
     """
+
     def __init__(self, a=0.7, b=0.1, noise=None):
         self.bounds = _bounds_ishigami
         self.f = _make_ishigami(a, b)
         self.noise = noise
         self._normalised = False
 
+
 _bounds_ishigami = [(-np.pi, np.pi) for _ in range(3)]
+
 
 def _make_ishigami(a, b):
     """ Closure to return Ishigami test function with parameters a and b"""
     def _f_ishigami(x):
-        return np.sin(x[:,0])+a*(np.sin(x[:,1])**2)+b*x[:,2]**4*np.sin(x[:,0])
+        return (
+            np.sin(x[:, 0]) +
+            a*(np.sin(x[:, 1])**2)+
+            b*x[:, 2]**4 * np.sin(x[:, 0])
+        )
     return _f_ishigami
 
+# ------------------------------------------------------------------------------
+# Franke's function
+# ------------------------------------------------------------------------------
+
+
+class Franke(TestFunction):
+    """ Franke, R (1979)
+
+    Notes
+    -----
+    See: https://www.sfu.ca/~ssurjano/franke2d.html
+
+    """
+
+    def __init__(self, noise=None):
+        self.bounds = [(0, 1)] * 2
+        self.f = _f_franke
+        self.noise = noise
+        self._normalised = False
+
+
+def _f_franke(x):
+    return (
+        0.75 * np.exp(
+            - (((9 * x[:, 0] - 2)**2) / 4)
+            - (((9 * x[:, 1] - 2)**2) / 4)
+        ) +
+        0.75 * np.exp(
+            - (((9 * x[:, 0] + 1)**2) / 49)
+            - ((9 * x[:, 1] + 1) / 10)
+        ) +
+        0.5 * np.exp(
+            - (((9 * x[:, 0] - 7)**2) / 4)
+            - (((9 * x[:, 1] - 3)**2) / 4)
+        ) -
+        0.2 * np.exp(-(9 * x[:, 0] - 4)**2 - (9 * x[:, 1] - 7)**2)
+    )

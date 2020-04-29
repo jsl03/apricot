@@ -1,3 +1,2 @@
 recursive-include apricot/src *.cpp
 recursive-include apricot/src *.h
-include apricot/tests/testdata_sampling.npz

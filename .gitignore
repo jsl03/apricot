@@ -1,5 +1,8 @@
+./apricot/src/.clang_complete
+./apricot/src/.clang-format
 *.pyo
 *.pyc
+*.test
 .mypy_cache/
 build/
 dist/

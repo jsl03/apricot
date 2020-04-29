@@ -1,90 +1,115 @@
 // This file is licensed under Version 3.0 of the GNU General Public
 // License. See LICENSE for a text of the license.
 // -----------------------------------------------------------------------------
+#ifndef __GP_EQ_MLE_OBJECTIVE_H_
+#define __GP_EQ_MLE_OBJECTIVE_H_
 
-// -----------------------------------------------------------------------------
-// THIS IS AN EXPERIMENTAL MODULE
-// -----------------------------------------------------------------------------
+#include <math.h>
 
-double halfLogDet(const Eigen::MatrixXd &mat)
-{
-        double halflogdet = 0;
-        for (int i=0; i < mat.rows(); i++){
-                halflogdet += log(mat(i,i));
-        }
-        return halflogdet;
-}
+#include <eigen3/Eigen/Dense>
+#include <eigen3/Eigen/LU>
+#include <eigen3/unsupported/Eigen/SpecialFunctions>
+#include <vector>  // necessary to satisfy the linter for some reason
 
-Eigen::MatrixXd covEq(
-        Eigen::Ref<const Eigen::MatrixXd> x,
-        double amp_sq,
-        Eigen::Ref<const Eigen::VectorXd> ls_sq,
-        double sigma_sq
-        )
-{
-        Eigen::RowVectorXd ls = ls_sq.transpose().array().sqrt();
-        Eigen::MatrixXd tau(x.rows(), x.rows());
-        Eigen::MatrixXd I = Eigen::MatrixXd::Identity(x.rows(), x.rows());
-        Eigen::MatrixXd xl = x.array().rowwise() / ls.array();
-        Eigen::VectorXd tmp = xl.array().square().rowwise().sum();
-        // next is an outer addition of two vectors:
-        tau = tmp.rowwise().replicate(tmp.size()) +
-                tmp.transpose().colwise().replicate(tmp.size());
-        tau.noalias() += -2.0 * xl * xl.transpose();
-        return ((amp_sq * ((-0.5 * tau).array().exp())).array()
-                + (I.array() * sigma_sq)
-                ).matrix().selfadjointView<Eigen::Lower>();
-}
+#include "kernels.h"
+#include "misc.h"
 
-class make_mle_objective
-{
-private:
-        Eigen::MatrixXd x;
-        Eigen::VectorXd y;
-        double jitter;
-        double term0;
+class NLMLEqKernel {
+ private:
+  Eigen::MatrixXd x;
+  Eigen::VectorXd y;
+  double jitter;
+  int n;
+  int d;
+  double term0;
 
-public:
-        make_mle_objective(
-                const Eigen::MatrixXd &x,
-                const Eigen::VectorXd &y,
-                const double jitter
-                );
+ public:
+  NLMLEqKernel(const Eigen::MatrixXd &x, const Eigen::VectorXd &y,
+                     const double jitter);
 
-        double objective(Eigen::Ref<const Eigen::VectorXd> log_theta);
+  double objective(Eigen::Ref<const Eigen::VectorXd> theta);
+  std::tuple<double, Eigen::VectorXd> objective_jac(
+      Eigen::Ref<const Eigen::VectorXd> theta);
 };
 
-make_mle_objective::make_mle_objective(
-        const Eigen::MatrixXd &x,
-        const Eigen::VectorXd &y,
-        const double jitter
-        ):
-        x(x),
-        y(y),
-        jitter(jitter)
-{
-        term0 = (x.rows() / 2.0) * log(2.0 * M_PI);
+NLMLEqKernel::NLMLEqKernel(const Eigen::MatrixXd &x,
+                                       const Eigen::VectorXd &y,
+                                       const double jitter)
+    : x(x), y(y), jitter(jitter), n(x.rows()), d(x.cols()) {
+  term0 = (n / 2.0) * log(2.0 * M_PI);
 }
 
-double make_mle_objective::objective(
-        Eigen::Ref<const Eigen::VectorXd> log_theta
-        )
-{
-    // retrieve from log-space
-    Eigen::VectorXd theta = log_theta.array().exp();
-    double amp_sq = pow(theta(0), 2);
-    double sigma_sq = pow(theta(1), 2);
-    Eigen::VectorXd ls_sq = theta.tail(theta.size() - 2).array().square();
-    Eigen::MatrixXd knn(x.rows(), x.rows());
-    Eigen::LLT<Eigen::MatrixXd> k_chol;
-    double term1;
-    double term2;
-    // no sigma_sq yet! (just jitter)
-    knn = covEq(x, amp_sq, ls_sq, sigma_sq + jitter);
-    k_chol = knn.selfadjointView<Eigen::Lower>().llt();
-    // log determinant term
-    term1 = halfLogDet(k_chol.matrixL());
-    // likelihood term
-    term2 = 0.5 * k_chol.matrixL().solve(y).squaredNorm();
-    return (term0 + term1 + term2) / y.size();
+double NLMLEqKernel::objective(Eigen::Ref<const Eigen::VectorXd> theta) {
+  double amp_sq = pow(theta(0), 2);
+  double sigma_sq = pow(theta(1), 2);
+  Eigen::VectorXd ls_sq = theta.tail(theta.size() - 2).array().square();
+
+  Eigen::LLT<Eigen::MatrixXd> k_chol =
+      chol_(covEq_(x, amp_sq, ls_sq, sigma_sq, jitter));
+
+  double loglik = term0;
+  loglik += 0.5 * (y.transpose() * k_chol.solve(y))(0);
+  loglik += k_chol.matrixLLT().diagonal().array().log().sum();
+  return loglik / n;
 }
+
+std::tuple<double, Eigen::VectorXd> NLMLEqKernel::objective_jac(
+    Eigen::Ref<const Eigen::VectorXd> theta) {
+  double amp = theta(0);
+  double amp_sq = pow(amp, 2);
+  double sigma = theta(1);
+  double sigma_sq = pow(sigma, 2);
+  Eigen::VectorXd ls = theta.tail(theta.size() - 2);
+  Eigen::VectorXd ls_sq = theta.array().square();
+  //
+  // log marginal likelihood -------------------------------------------------
+  Eigen::MatrixXd identity = Eigen::MatrixXd::Identity(x.rows(), x.rows());
+  Eigen::MatrixXd tau = scaledDistanceSelf(x, ls_sq);
+
+  // k(x, x | theta)
+  Eigen::MatrixXd k = ((amp_sq * ((-0.5 * tau).array().exp())).array() +
+                       sigmaToMat(n, sigma_sq, jitter).array())
+                          .matrix()
+                          .selfadjointView<Eigen::Lower>();
+
+  // Lower cholesky factor of k
+  Eigen::LLT<Eigen::MatrixXd> k_chol = chol_(k);
+
+  // k_inv * y
+  Eigen::MatrixXd alpha = k_chol.solve(y);
+
+  // compute the negative log marginal likelihood
+  double loglik = term0;
+  loglik += 0.5 * (y.transpose() * alpha)(0);
+  loglik += k_chol.matrixLLT().diagonal().array().log().sum();
+  loglik /= x.rows();
+
+  // gradients  --------------------------------------------------------------
+  Eigen::VectorXd jac(theta.size());
+  Eigen::MatrixXd w = (alpha * alpha.transpose()) - k_chol.solve(identity);
+
+  // derivative w.r.t amp
+  Eigen::MatrixXd dkda =
+      ((2.0 * sqrt(amp_sq) * ((-0.5 * tau).array().exp())).array())
+          .matrix()
+          .selfadjointView<Eigen::Lower>();
+  jac(0) = loglikDeriv(w, dkda);
+
+  // derivatives w.r.t. sigma
+  Eigen::MatrixXd dkds = Eigen::MatrixXd::Identity(n, n).array() * 2 * sigma;
+  jac(1) = loglikDeriv(w, dkds);
+
+  // derivatives w.r.t. ls
+  Eigen::MatrixXd dkdl(x.rows(), x.rows());
+  for (int idx = 0; idx < d; idx++) {
+    dkdl = k.array() * subtractSelfOuter(x.col(idx)).array().square() /
+           pow(ls(idx), 3);
+    jac(2 + idx) = loglikDeriv(w, dkdl);
+  }
+
+  // scale derivatives by 1/n
+  jac = jac.array() / x.rows();
+  return std::make_tuple(loglik, jac);
+}
+
+#endif  //__GP_EQ_MLE_OBJECTIVE_H_

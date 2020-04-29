@@ -46,9 +46,10 @@ these are currently not supported.
 
 * [pyStan](https://github.com/stan-dev/pystan)
 
-* [pybind](https://github.com/pybind/pybind11)>=2.2
+* [pybind11](https://github.com/pybind/pybind11)>=2.2
 
-* The [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page) header library.
+* The [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page) header
+  library (assumed to be in `/usr/include/eigen3`).
 
 ### Optional Extras
 

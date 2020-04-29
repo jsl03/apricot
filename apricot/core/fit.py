@@ -5,6 +5,7 @@ import typing
 import numpy as np
 from apricot.core import emulator
 from apricot.core.models import interface, glue, mle
+from apricot.core.logger import get_logger
 
 
 def fit(

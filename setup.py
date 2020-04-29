@@ -2,13 +2,12 @@
 # License. See LICENSE for a text of the license.
 # ------------------------------------------------------------------------------
 
-from setuptools import setup, Extension
-from setuptools.command.build_ext import build_ext
 import sys
 import setuptools
+from setuptools import setup, Extension
+from setuptools.command.build_ext import build_ext
 
-
-__version__ = '0.93'
+__version__ = '0.95'
 
 
 class get_pybind_include(object):
