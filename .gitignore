@@ -1,5 +1,5 @@
-./apricot/src/.clang_complete
-./apricot/src/.clang-format
+.clang_complete
+.clang-format
 *.pyo
 *.pyc
 *.test
