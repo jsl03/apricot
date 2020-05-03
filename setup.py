@@ -1,13 +1,13 @@
 # This file is licensed under Version 3.0 of the GNU General Public
 # License. See LICENSE for a text of the license.
 # ------------------------------------------------------------------------------
-
 import sys
 import setuptools
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 
-__version__ = '0.95'
+
+__version__ = '0.96'
 
 
 class get_pybind_include(object):
