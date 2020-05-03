@@ -9,7 +9,7 @@ TODO:
 """
 
 import unittest
-import numpy as np
+import numpy as np  # type: ignore
 import gp_utils
 from apricot.core import exceptions
 from apricot.core import emulator

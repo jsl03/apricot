@@ -1,19 +1,20 @@
 # This file is licensed under Version 3.0 of the GNU General Public
 # License. See LICENSE for a text of the license.
 # ------------------------------------------------------------------------------
-import typing
-import numpy as np
+from typing import Optional, Mapping, Any, Callable
+import numpy as np  # type: ignore
+from apricot.core.models import type_aliases as ta
 from apricot.core.sampling.sobol import sobol
 from apricot.core.sampling.sobol import sobol_scatter
 from apricot.core.sampling.lhs import lhs
 from apricot.core.sampling.lhs import optimised_lhs
 from apricot.core.sampling.lhs import mdurs
 from apricot.core.sampling.factorial import factorial
-from apricot.core.utils import _force_f_array
+from apricot.core.utils import force_f_array
 from apricot.core.utils import set_seed
 
 
-def urandom(n: int, d: int, seed: typing.Optional[int] = None):
+def urandom(n: int, d: int, seed: Optional[int] = None):
     """ Uniform random sample.
 
     Parameters
@@ -30,11 +31,12 @@ def urandom(n: int, d: int, seed: typing.Optional[int] = None):
         random.
     """
     set_seed(seed)
-    return np.random.random((n, d))
+    return np.random.random((n, d))  # pylint: disable=no-member
 
 
-# valid methods for obtaining a sample on [0,1]^d
-_METHODS = {
+# TODO strengthen type of methods here; all accept two ints as the first
+# positional argument
+METHODS: Mapping[str, Callable] = {
     'urandom': urandom,
     'lhs': lhs,
     'olhs': optimised_lhs,
@@ -45,16 +47,12 @@ _METHODS = {
 }
 
 
-def show_methods():
-    return (set(_METHODS.keys()))
-
-
 def sample_hypercube(
         n: int,
         d: int,
         method: str,
-        seed: typing.Optional[int] = None,
-        options: typing.Optional[dict] = None,
+        seed: Optional[int] = None,
+        options: Optional[Mapping[str, Any]] = None,
 ):
     """ Unified interface to obtaining uniform random variables on [0,1]^d.
 
@@ -86,9 +84,10 @@ def sample_hypercube(
             However, this implementation of the algorithm is deterministic so
             will provide the same set of points if run repeatedly with the same
             arguments.
-        * 'randomised_sobol' : Sobol sequence [2]_ with randomization. Generates
-            a sobol sequence, applies uniform [-1,1]^d perturbation to each of
-            the generated points, and then modulates the grid to be on [0,1]^d.
+        * 'randomised_sobol' : Sobol sequence [2]_ with randomization.
+            Generates a sobol sequence, applies uniform [-1,1]^d perturbation
+            to each of the generated points, and then modulates the grid to be
+            on [0,1]^d.
         * 'factorial' : factorial (cartesian product) grid. Currently only
             supports sample sizes of a**d <= n where n is the requested
             number of samples, d is the number of dimensions and a is the
@@ -123,7 +122,9 @@ def sample_hypercube(
     method = method.lower()
     if options is None:
         options = {}
-    if method not in _METHODS:
-        raise ValueError('method must be one of {methods}.'.
-                         format(methods=set(_METHODS.keys())))
-    return _force_f_array(_METHODS[method](n, d, seed=seed, **options))
+    try:
+        sample_method = METHODS[method]
+    except KeyError:
+        msg = 'method must be one of {0}.'.format(METHODS.keys())
+        raise ValueError(msg)
+    return force_f_array(sample_method(n, d, seed=seed, **options))

@@ -1,8 +1,13 @@
-# This file is licensed under Version 3.0 of the GNU General Public
-# License. See LICENSE for a text of the license.
-# ------------------------------------------------------------------------------
-import typing
-import numpy as np
+"""
+
+DOCSTRING
+
+-------------------------------------------------------------------------------
+This file is licensed under Version 3.0 of the GNU General Public
+License. See LICENSE for a text of the license.
+"""
+from typing import Tuple
+import numpy as np  # type: ignore
 
 
 def integrate_mixture(

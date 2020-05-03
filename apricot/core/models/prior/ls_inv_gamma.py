@@ -1,21 +1,22 @@
 # This file is licensed under Version 3.0 of the GNU General Public
 # License. See LICENSE for a text of the license.
 # ------------------------------------------------------------------------------
-import typing
+from typing import cast, Optional, Union, List, Tuple, Callable, Sequence
 import functools
-import numpy as np
-from scipy import special
-from scipy import optimize
+import numpy as np  # type: ignore
+from scipy import special  # type: ignore
+from scipy import optimize  # type: ignore
 from apricot.core import utils
+from apricot.core.models import type_aliases as ta
 
 
 def ls_inv_gamma_prior(
         x: np.ndarray,
-        options: typing.Optional[typing.Union[typing.List[str], str]] = None,
+        ls_options: Optional[ta.LsPriorOptions] = None,
         gridsize: int = 10000,
         max_attempts: int = 3,
-        seed: typing.Optional[int] = None,
-):
+        seed: Optional[int] = None,
+) -> Tuple[np.ndarray, np.ndarray]:
     """ Inverse Gamma lengthscale hyperprior.
 
     Calculates the parameters of an inverse gamma distribution, ls_alpha and
@@ -55,10 +56,10 @@ def ls_inv_gamma_prior(
     """
     d = x.shape[1]
     delta_min = min_spacing(x)
-    options_formatted = format_options(options, d)
+    formatted_options = format_options(ls_options, d)
     ls_alpha = np.empty(d)
     ls_beta = np.empty(d)
-    for dim, option in enumerate(options_formatted):
+    for dim, option in enumerate(formatted_options):
         lb, ub, lb_tol, ub_tol = parse_option(delta_min[dim], option)
         ls_alpha[dim], ls_beta[dim] = solve_inv_gamma(
                 lb,
@@ -72,7 +73,7 @@ def ls_inv_gamma_prior(
     return ls_alpha, ls_beta
 
 
-def min_spacing(x: np.ndarray):
+def min_spacing(x: np.ndarray) -> np.ndarray:
     """Get the minimum spacing between values for each column of x
 
     Parameters
@@ -96,7 +97,7 @@ def min_spacing(x: np.ndarray):
     return delta_min
 
 
-def inv_gamma_cdf(x: float, alpha: float, beta: float):
+def inv_gamma_cdf(x: float, alpha: float, beta: float) -> float:
     """ Inverse gamma distribution CDF. """
     if x <= 0:
         return 0.0
@@ -104,7 +105,7 @@ def inv_gamma_cdf(x: float, alpha: float, beta: float):
         return special.gammaincc(alpha, beta/x)
 
 
-def inv_gamma_pdf(x: float, alpha: float, beta: float):
+def inv_gamma_pdf(x: float, alpha: float, beta: float) -> float:
     """ Inverse gamma distribution PDF. """
     if x <= 0:
         return 0.0
@@ -120,8 +121,8 @@ def inv_gamma_tail(
         upper: float,
         lower_tol: float,
         upper_tol: float,
-        theta: typing.Tuple[float, float],
-):
+        theta: Tuple[float, float],
+) -> Tuple[float, float]:
     """ Inverse gamma tail probabilities in excess of tolerances.
 
     Returns the probability mass of an inverse gamma distribution parametrised
@@ -165,7 +166,7 @@ def create_objective(
         upper: float,
         lower_tol: float,
         upper_tol: float
-):
+) -> ta.LsOptObjective:
     """ Objective function for solve_inv_gamma.
 
     Parameters
@@ -188,7 +189,10 @@ def create_objective(
     objective : callable
         Function: objective((alpha, beta)) -> (objective_1, objective_2)
     """
-    return functools.partial(inv_gamma_tail, lower, upper, lower_tol, upper_tol)
+
+    def objective(theta: Tuple[float, float]) -> Tuple[float, float]:
+        return inv_gamma_tail(lower, upper, lower_tol, upper_tol, theta)
+    return objective
 
 
 def solve_inv_gamma(
@@ -198,8 +202,8 @@ def solve_inv_gamma(
         ub_tol: float,
         gridsize: int = 10000,
         max_attempts: int = 3,
-        seed: typing.Optional[int] = None,
-):
+        seed: Optional[int] = None,
+) -> Tuple[float, float]:
     """ Solve system of equations to find appropriate inverse gamma parameters.
 
     Aims to identify parameters alpha and beta such that:
@@ -255,46 +259,61 @@ def solve_inv_gamma(
         theta_sol = optimize.root(obj, theta0)
         converged = theta_sol['success']
         if attempts > max_attempts:
-            raise RuntimeError('Maximum number of attempts exceeded without convergence.')
+            raise RuntimeError(
+                'Maximum number of attempts exceeded without convergence.'
+            )
     return theta_sol['x'][0], theta_sol['x'][1]
 
 
 def format_options(
-        options: typing.Optional[typing.Union[typing.List[str], str]],
+        ls_options: Optional[ta.LsPriorOptions],
         d: int
-):
+) -> Sequence[Optional[str]]:
     """ Ensure 'options' is a list of length d.
 
     Options must be present for each input dimension. If only one options
     string is provided, it is "cloned" d times. Lists are unmodified.
     """
-    if options is None:
-        return [None for _ in range(d)]
-    if type(options) is str:
-        return [options for _ in range(d)]
+    if ls_options is None:
+        return [None] * d
+    if isinstance(ls_options, str):
+        return [ls_options] * d
     else:
-        return options
+        return ls_options
 
 
-def parse_option(delta_min: float, option: str):
+def parse_option(
+        delta_min: float,
+        option: Optional[str]
+) -> Tuple[float, float, float, float]:
     """ Parse options.
 
-    Parse requested option and designate lb, ub, lb_tol and ub_tol.
+    Parse requested option and designate lb, ub, lb_tol and ub_tol. Defaults
+    to 'nonlinear' if option is None.
 
-    Defaults to 'nonlinear' if option is None.
+    Returns
+    -------
+    lb: float
+        Lower bound.
+    ub: float
+        Upper bound.
+    lb_tol: float
+        Lower bound tolerance.
+    ub_tol: float
+        Upper bound tolerance.
     """
     if option is None:
         option = 'nonlinear'
     if option.lower() == 'nonlinear':
         lb = max(delta_min, 0.05)
-        ub = 1
+        ub = 1.0
         lb_tol = 0.01
         ub_tol = 0.01
     elif option.lower() == 'linear':
-        lb = 1
-        ub = 5.
-        lb_tol = 0.05
-        ub_tol = 0.2
+        lb = 1.0
+        ub = 5.0
+        lb_tol = 0.01
+        ub_tol = 0.01
     else:
         raise NotImplementedError('{}'.format(option))
     return lb, ub, lb_tol, ub_tol

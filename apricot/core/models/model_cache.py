@@ -3,15 +3,16 @@
 # ------------------------------------------------------------------------------
 import os
 import pickle
+from typing import Callable, Any
 import six
-import typing
+import pystan  # type: ignore
 import apricot
-import pystan
 from apricot.core.models import build
 from apricot.core.logger import get_logger, PYSTAN_LOGGER_ENABLED
 
 
-logger = get_logger()
+LOGGER = get_logger()
+
 
 if PYSTAN_LOGGER_ENABLED:
     pystan.api.logger.disabled = 0
@@ -22,11 +23,13 @@ else:
 _ROOTDIR = os.path.dirname(os.path.abspath(apricot.__file__))
 _MODEL_CACHE = _ROOTDIR + '/cache/'
 
-# TODO: how does mypy check for inheritance?
-Model_Part_Type = build.components.StanModelPart
+
+KernelPart = build.components.StanModelKernel
+MeanPart = build.components.StanModelMeanFunction
+NoisePart = build.components.StanModelNoise
 
 
-def memo(func: typing.Callable) -> typing.Callable:
+def memo(func: Callable[[str], Any]) -> Callable[[str], Any]:
     """ Simple session cache decorator.
 
     Prevents repeatedly unpickling the same model over and over.
@@ -41,22 +44,21 @@ def memo(func: typing.Callable) -> typing.Callable:
 
 
 def load(
-        kernel_part: Model_Part_Type,
-        mean_part: Model_Part_Type,
-        noise_part: Model_Part_Type,
+        kernel_part: KernelPart,
+        mean_part: MeanPart,
+        noise_part: NoisePart,
         warp: bool,
 ) -> pystan.StanModel:
     filename = get_filename(kernel_part, mean_part, noise_part, warp)
     if os.path.isfile(filename):
         return load_from_pickle(filename)
-    else:
-        return compile_model(kernel_part, mean_part, noise_part, filename)
+    return compile_model(kernel_part, mean_part, noise_part, filename)
 
 
 def get_filename(
-        kernel_part: Model_Part_Type,
-        mean_part: Model_Part_Type,
-        noise_part: Model_Part_Type,
+        kernel_part: KernelPart,
+        mean_part: MeanPart,
+        noise_part: NoisePart,
         warp: bool,
 ) -> str:
     fname = '_'.join([
@@ -72,23 +74,23 @@ def get_filename(
 @memo
 def load_from_pickle(filename: str) -> pystan.StanModel:
     """Load a permanently cached pystan model """
-    logger.debug('Loading Stan model: {0}'.format(filename))
+    LOGGER.debug('Loading Stan model: %s', filename)
     return pickle.load(open(filename, 'rb'))
 
 
 def compile_model(
-        kernel_part: Model_Part_Type,
-        mean_part: Model_Part_Type,
-        noise_part: Model_Part_Type,
+        kernel_part: KernelPart,
+        mean_part: MeanPart,
+        noise_part: NoisePart,
         filename: str,
 ) -> pystan.StanModel:
     """ Assemble model code from parts, compile it, and save the pickle. """
     to_cache = prompt_cache()
     model_code = build.assmeble_model_code(kernel_part, mean_part, noise_part)
-    compiled_model = pystan.StanModel(model_code = model_code)
+    compiled_model = pystan.StanModel(model_code=model_code)
     if to_cache:
         with open(filename, 'wb') as destination:
-            logger.debug('Saving Stan model: {0}'.format(filename))
+            LOGGER.debug('Saving Stan model: %s', filename)
             pickle.dump(compiled_model, destination)
     return compiled_model
 
@@ -106,6 +108,5 @@ def prompt_cache(attempts: int = 0) -> bool:
         return True
     if ans == 'n':
         return False
-    else:
-        print("Answer either (y)es, (n)o, or (c)ancel.")
-        return prompt_cache(attempts=attempts)
+    print("Answer either (y)es, (n)o, or (c)ancel.")
+    return prompt_cache(attempts=attempts)

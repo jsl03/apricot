@@ -1,21 +1,31 @@
-# This file is licensed under Version 3.0 of the GNU General Public
-# License. See LICENSE for a text of the license.
-# ------------------------------------------------------------------------------
-import typing
-import numpy as np
+"""
+DOCSTRING
+
+-------------------------------------------------------------------------------
+This file is licensed under Version 3.0 of the GNU General Public
+License. See LICENSE for a text of the license.
+"""
+from typing import Any, Optional, Union
+import numpy as np  # type: ignore
 from apricot.core import emulator
-from apricot.core.models import interface, glue, mle
+from apricot.core.models import interface
+from apricot.core.models import glue
+from apricot.core.models import mle
+from apricot.core.models import type_aliases as ta
 from apricot.core.logger import get_logger
 
 
-def fit(
+LOGGER = get_logger()
+
+
+def fit(  # pylint: disable=too-many-arguments
         x: np.ndarray,
         y: np.ndarray,
         kernel: str = 'eq',
         mean: str = 'zero',
-        noise: typing.Union[str, float] = 'zero',
+        noise: Union[str, float] = 'zero',
         method: str = 'hmc',
-        **kwargs,
+        **kwargs: Any,
 ) -> emulator.Emulator:
     """ Fit a Gaussian Process emulator to data.
 
@@ -127,30 +137,31 @@ def fit(
     interface_instance = interface.Interface(kernel, mean, noise)
 
     if method.lower() == 'hmc':
-        return _fit_hmc(interface_instance, x, y, **kwargs)
-    elif method.lower() == 'map':
-        return _fit_map(interface_instance, x, y, **kwargs)
-    elif method.lower() == 'mle':
-        jitter = kwargs['jitter'] if 'jitter' in kwargs else 1e-10
-        return _fit_mle(interface_instance, x, y, jitter)
-    else:
-        raise ValueError("Unrecognised fit method: '{0}'.".format(method))
+        return fit_hmc(interface_instance, x, y, **kwargs)
+
+    if method.lower() == 'map':
+        return fit_map(interface_instance, x, y, **kwargs)
+
+    if method.lower() == 'mle':
+        return fit_mle(interface_instance, x, y, **kwargs)
+
+    raise ValueError("Unrecognised fit method: '{0}'.".format(method))
 
 
-def _fit_hmc(
+def fit_hmc(  # pylint: disable=too-many-arguments, too-many-locals
         interface_instance: interface.Interface,
         x: np.ndarray,
         y: np.ndarray,
         jitter: float = 1e-10,
-        fit_options: typing.Optional[dict] = None,
+        ls_options: ta.LsPriorOptions = None,
         samples: int = 4000,
         thin: int = 1,
         chains: int = 4,
         adapt_delta: float = 0.8,
         max_treedepth: int = 10,
-        seed: typing.Optional[int] = None,
+        seed: Optional[int] = None,
         permute: bool = True,
-        init_method: typing.Union[dict, str, int] = 'stable',
+        init_method: Union[dict, str, int] = 'stable',
 ) -> emulator.Emulator:
     """ Run Stan's HMC algorithm for the provided model.
 
@@ -165,7 +176,7 @@ def _fit_hmc(
         (n,) array of responses corresponding to each row of x.
     jitter : float, optional
         Stability jitter. Default = 1e-10.
-    fit_options : string or list of string, optional
+    ls_options : string or list of string, optional
         Specify either a list of 'linear' or 'nonlinear' for each input
         dimension, or a single string to apply the supplied option to all input
         dimensions.
@@ -211,7 +222,7 @@ def _fit_hmc(
         x,
         y,
         jitter=jitter,
-        fit_options=fit_options,
+        ls_options=ls_options,
         samples=samples,
         thin=thin,
         chains=chains,
@@ -234,16 +245,16 @@ def _fit_hmc(
     return emulator_instance
 
 
-def _fit_map(
+def fit_map(  # pylint: disable=too-many-arguments
         interface_instance: interface.Interface,
         x: np.ndarray,
         y: np.ndarray,
         jitter: float = 1e-10,
-        init_method: typing.Union[dict, str, int] = 'stable',
+        init_method: ta.InitTypes = 'stable',
         algorithm: str = 'Newton',
         restarts: int = 5,
         max_iter: int = 250,
-        seed: typing.Optional[int] = None,
+        seed: Optional[int] = None,
 ) -> emulator.Emulator:
     """ Optimise the posterior probability of the hyperparameters for the
     provided model.
@@ -319,9 +330,98 @@ def _fit_map(
     return emulator_instance
 
 
-def _fit_mle(interface_instance, x, y, jitter):
-    """ Optimise the log marginal likelihood for the provided model """
-    hyperparameters, info = mle.run_mle(interface_instance, x, y, jitter)
+def fit_mle(  # pylint: disable=too-many-arguments, too-many-locals
+        interface_instance: interface.Interface,
+        x: np.ndarray,
+        y: np.ndarray,
+        jitter: float = 1e-10,
+        bounds: Optional[ta.Bounds] = None,
+        ls_lower: float = 0.05,
+        ls_upper: float = 1.0,
+        xi_lower: float = 0.0,
+        xi_upper: Optional[float] = None,
+        amp_lower: float = 0.0,
+        amp_upper: float = 1.0,
+        grid_size: int = 5000,
+        grid_method: str = 'sobol',
+        grid_options: Optional[dict] = None,
+        seed: Optional[int] = None,
+        callback: Optional[ta.CallbackFunction] = None,
+) -> emulator.Emulator:
+    """ Identify model hyperparameters using maximum log marginal likelihood.
+
+    Parameters
+    ----------
+    interface_instance: intstance of apricot.core.models.interface.Interface
+        Interface to the model who's hyperparameters should be identified.
+    x: ndarray
+        (n, d) array of n sample points in d dimensions.
+    y: ndarray
+        (n) array of n responses corresponding to the rows of x.
+    jitter: float, optional
+        Magnitude of stability jitter to be added to the leading diagonal of
+        the sample covariance matrix.
+    bounds: List of tuple, optional
+        List of (lower, upper) bounds for the preliminary grid search for each
+        hyperparameter in the following order: signal amplitude (marginal
+        standard deviation), (optionally) noise variance (if present),
+        anisotropic lengthscales. For fixed noise models, this is:
+        [amp, ls_1, ..., ls_d], and if inferring the noise standard deviation,
+        this is [amp, xi, ls_1, ..., ls_d]. If not provided, the grid search
+        bounds will be set to "sensible" defaults (see below). Default = None.
+    ls_lower: float, optional
+        Grid search lower bound for anisotropic lengthscales. Default = 0.05.
+    ls_upper: float, optional
+        Grid search upper bound for anisotropic lengthscales. Default = 1.
+    xi_lower: float, optional
+        Grid search lower bound for noise standard deviation. Default = 0
+    xi_upper: {None, float}, optional
+        Grid search upper bound for noise standard deviation. If None and
+        infer_noise is True, xi_upper is equal to 1/10 of the
+        sample standard deviation for function observations, that is:
+        xi_upper = np.std(y) / 10. Default = None.
+    amp_lower: float, optional
+        Grid search lower bound for marginal standard deviation. Default = 0.
+    amp_upper: float, optional
+        Grid search upper bound for marginal standard deviation. Default = 1.
+    grid_size: int, optional
+        Number of points to use for the preliminary grid search. Default =
+        5000. For large sample sample sizes, this can be reduced.
+    grid_method: str, optional
+        String specifying which method to use to generate the grid points.
+        Valid options are compatible with apricot.sample_hypercube. Default =
+        'sobol'.
+    grid_options: dict, optional
+        Additional options to pass to the chosen grid generating method.
+        Default = None.
+    seed: int32, optional
+        Random seed. If not provided, one will be generated. Default = None.
+    callback: ndarray -> Any
+        Callback function. Recieves the parameter vector queried by the
+        optimisation algorithm at each iteration. Used primarily for debugging.
+
+    Returns
+    -------
+    Emulator : apricot.emulator.Emulator instance
+    """
+    hyperparameters, info = mle.run_mle(
+        interface_instance,
+        x,
+        y,
+        jitter=jitter,
+        bounds=bounds,
+        ls_lower=ls_lower,
+        ls_upper=ls_upper,
+        xi_lower=xi_lower,
+        xi_upper=xi_upper,
+        amp_lower=amp_lower,
+        amp_upper=amp_upper,
+        grid_size=grid_size,
+        grid_method=grid_method,
+        grid_options=grid_options,
+        seed=seed,
+        callback=callback
+    )
     emulator_instance = emulator.Emulator(
         x,
         y,

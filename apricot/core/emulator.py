@@ -1,27 +1,27 @@
-# This file is licensed under Version 3.0 of the GNU General Public
-# License. See LICENSE for a text of the license.
-# ------------------------------------------------------------------------------
-import typing
+"""
+Code for the Gaussian Process Emulator class and associated utilities.
+
+-------------------------------------------------------------------------------
+This file is licensed under Version 3.0 of the GNU General Public
+License. See LICENSE for a text of the license.
+"""
+from typing import Mapping, Callable, Optional, Dict, Any, Tuple
 from functools import wraps
-import numpy as np
-from apricot.core import gp_internal
+import numpy as np  # type: ignore
+from apricot.core import gp_internal  # pylint: disable=E0611
 from apricot.core import sampling
 from apricot.core import optimisation
 from apricot.core import utils
 from apricot.core import exceptions
 from apricot.core import visualisation
 from apricot.core.models import parse
+from apricot.core.models import type_aliases as ta
 
 
-InternalGpType = typing.Union[
-    gp_internal.GpEqKernel,
-    gp_internal.GpM52Kernel,
-    gp_internal.GpM32Kernel,
-    gp_internal.GpRqKernel
-]
-
-
-def _format_input(xstar: np.ndarray, d: int) -> np.ndarray:
+def format_input(
+        xstar: np.ndarray,
+        d: int
+) -> np.ndarray:
     """ Format inputs.
 
     Ensures arrays are correctly shaped and F-ordered before passing to the
@@ -30,7 +30,7 @@ def _format_input(xstar: np.ndarray, d: int) -> np.ndarray:
     Parameters
     ----------
     xstar : ndarray
-        Unformatted array. Raw (n,d) array of n points from the d-dimensional
+        Unformatted array. Raw (n, d) array of n points from the d-dimensional
         index.
     d : int
         Dimension of index.
@@ -56,19 +56,19 @@ def _format_input(xstar: np.ndarray, d: int) -> np.ndarray:
     elif xstar.ndim == 2:
         if xstar.shape[1] != d:
             raise exceptions.ShapeError('xstar', 'n', d, xstar.shape)
-        xstar_f = utils._force_f_array(xstar)
+        xstar_f = utils.force_f_array(xstar)
     else:
         xstar_s = xstar.squeeze()
         if xstar_s.ndim == 2:
-            return _format_input(xstar_s, d)
+            return format_input(xstar_s, d)
         raise exceptions.ShapeError('xstar', 'n', d, xstar.shape)
     return xstar_f
 
 
-def defined_on_index(method: typing.Callable) -> typing.Callable:
+def defined_on_index(method: Callable) -> Callable:
     """ Decorator for methods accepting arrays of points from the index.
 
-    Applies _format_inputs to arrays passed to the wrapped method, ensuring
+    Applies format_inputs to arrays passed to the wrapped method, ensuring
     arrays are correctly shaped and F-ordered before passing them to the
     decorated methods.
 
@@ -86,16 +86,16 @@ def defined_on_index(method: typing.Callable) -> typing.Callable:
     """
     @wraps(method)
     def wrapper(inst, xstar, *tail, **kwargs):
-        xstar_f = _format_input(xstar, inst.d)
+        xstar_f = format_input(xstar, inst.d)
         return method(inst, xstar_f, *tail, **kwargs)
     return wrapper
 
 
-def _assign_internal(kernel_type: str):
+def assign_internal_gp(kernel_type: str) -> ta.InternalGp:
     """ Assign internal GP based on requested kernel """
-    assign = {
+    assign: Mapping[str, ta.InternalGp] = {
         'eq': gp_internal.GpEqKernel,
-        'eq_flat': gp_internal.GpEqKernel,  # for debug / testing only
+        'eq_flat': gp_internal.GpEqKernel,
         'm52': gp_internal.GpM52Kernel,
         'm32': gp_internal.GpM32Kernel,
         'rq': gp_internal.GpRqKernel
@@ -199,10 +199,10 @@ class Emulator:
             self,
             x: np.ndarray,
             y: np.ndarray,
-            hyperparameters: typing.Dict[str, np.ndarray],
-            info: typing.Optional[dict] = None,
+            hyperparameters: ta.Hyperparameters,
+            info: Optional[Dict[str, Any]] = None,
             kernel_type: str = 'eq',
-            mean_function_type: str = 'zero',
+            mean_function_type: ta.MeanFunction = 'zero',
             jitter: float = 1e-10,
     ) -> None:
         """ Gaussian Process emulator.
@@ -228,8 +228,8 @@ class Emulator:
 
         # pylint: disable=too-many-arguments
 
-        self._x = utils._force_f_array(x)
-        self._y = utils._force_f_array(y)
+        self._x = utils.force_f_array(x)
+        self._y = utils.force_f_array(y)
 
         self.kernel_type = kernel_type
         self.mean_type = mean_function_type
@@ -246,7 +246,7 @@ class Emulator:
         except KeyError as missing_key:
             raise exceptions.MissingParameterError(str(missing_key)) from None
         self._delta = jitter
-        internal = _assign_internal(self.kernel_type)
+        internal = assign_internal_gp(self.kernel_type)
         if self.kernel_type == 'rq':
             args = (
                 self._x,
@@ -272,27 +272,28 @@ class Emulator:
         self._gp = internal(*args)  # type: ignore
         # ----------------------------------------------------------------------
 
-        self.n, self.d = x.shape
-        self.m = self._amp.shape[0]
+        self.n, self.d = x.shape  # pylint: disable=C0103
+        self.m = self._amp.shape[0]  # pylint: disable=C0103
 
         # HACK guess the fit method from m if not explicitly provided; if only
         # a single hyperparameter sample is present we can assume it was
-        # optimised
+        # probably optimised
         if info is None:
             info = {}
             if self.m > 1:
                 info['method'] = 'hmc'
             else:
+                # this could also be MLE as of 0.93
                 info['method'] = 'map'
         self.info = info
 
     @property
-    def x(self) -> np.ndarray:
+    def x(self) -> np.ndarray:  # pylint: disable=C0103
         """ (n,d) array of sample points. """
         return self._x
 
     @property
-    def y(self) -> np.ndarray:
+    def y(self) -> np.ndarray:  # pylint: disable=C0103
         """ (n,) array of sample responses. """
         return self._y
 
@@ -345,7 +346,7 @@ class Emulator:
     def marginals(
             self,
             xstar: np.ndarray
-    ) -> typing.Tuple[np.ndarray, np.ndarray]:
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """"Predictive marginals
 
         Marginal predictive distributions corresponding to each hyperparameter
@@ -371,7 +372,7 @@ class Emulator:
     def posterior(
             self,
             xstar: np.ndarray
-    ) -> typing.Tuple[np.ndarray, np.ndarray]:
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """Predictive distribution
 
         The (joint) predictive distribution of the model corresponding to each
@@ -426,7 +427,7 @@ class Emulator:
 
         This implementation is negative both in the sense that it seeks an
         improvement in the *minimum* value of the target function *and* that
-        the acquisition function itself is to be minimised.
+        the acquisition function itself is designed to be minimised.
 
         Parameters
         ----------
@@ -549,12 +550,12 @@ class Emulator:
     def optimise(
             self,
             mode: str = 'min',
-            x0: typing.Optional[np.ndarray] = None,
-            grid: typing.Optional[np.ndarray] = None,
-            grid_size: typing.Optional[int] = None,
+            x0: Optional[np.ndarray] = None,
+            grid: Optional[np.ndarray] = None,
+            grid_size: Optional[int] = None,
             grid_method: str = 'lhs',
-            grid_options: typing.Optional[dict] = None,
-            seed: typing.Optional[int] = None,
+            grid_options: Optional[Mapping[str, Any]] = None,
+            seed: Optional[int] = None,
     ) -> dict:
         """ Global Min/Max of the posterior expectation.
 
@@ -613,7 +614,8 @@ class Emulator:
 
         else:
             raise ValueError("Mode must be either 'min' or 'max'.")
-        opts = {
+
+        opts: Mapping[str, Any] = {
             'x0': x0,
             'grid': grid,
             'grid_size': grid_size,
@@ -630,12 +632,12 @@ class Emulator:
 
     def next_ei(
             self,
-            x0: typing.Optional[np.ndarray] = None,
-            grid: typing.Optional[np.ndarray] = None,
-            grid_size: typing.Optional[int] = None,
+            x0: Optional[np.ndarray] = None,
+            grid: Optional[np.ndarray] = None,
+            grid_size: Optional[int] = None,
             grid_method: str = 'lhs',
-            grid_options: typing.Optional[dict] = None,
-            seed: typing.Optional[int] = None,
+            grid_options: Optional[Mapping[str, Any]] = None,
+            seed: Optional[int] = None,
     ) -> dict:
         """ Get the next point using expected improvement.
 
@@ -685,7 +687,7 @@ class Emulator:
 
         f = self._gp.ei
         f_jac = self._gp.ei_jac
-        opts = {
+        opts: Mapping[str, Any] = {
             'x0': x0,
             'grid': grid,
             'grid_size': grid_size,
@@ -697,12 +699,12 @@ class Emulator:
 
     def next_px(
             self,
-            x0: typing.Optional[np.ndarray] = None,
-            grid: typing.Optional[np.ndarray] = None,
-            grid_size: typing.Optional[int] = None,
+            x0: Optional[np.ndarray] = None,
+            grid: Optional[np.ndarray] = None,
+            grid_size: Optional[int] = None,
             grid_method: str = 'lhs',
-            grid_options: typing.Optional[dict] = None,
-            seed: typing.Optional[int] = None,
+            grid_options: Optional[Mapping[str, Any]] = None,
+            seed: Optional[int] = None,
     ) -> dict:
         """ Get the next point using pure exploration.
 
@@ -748,7 +750,7 @@ class Emulator:
 
         f = self._gp.px
         f_jac = self._gp.px_jac
-        opts = {
+        opts: Mapping[str, Any] = {
             'x0': x0,
             'grid': grid,
             'grid_size': grid_size,
@@ -761,12 +763,12 @@ class Emulator:
     def next_ucb(
             self,
             beta: float,
-            x0: typing.Optional[np.ndarray] = None,
-            grid: typing.Optional[np.ndarray] = None,
-            grid_size: typing.Optional[int] = None,
+            x0: Optional[np.ndarray] = None,
+            grid: Optional[np.ndarray] = None,
+            grid_size: Optional[int] = None,
             grid_method: str = 'lhs',
-            grid_options: typing.Optional[dict] = None,
-            seed: typing.Optional[int] = None,
+            grid_options: Optional[Mapping[str, Any]] = None,
+            seed: Optional[int] = None,
     ) -> dict:
         """ Get next point using upper confidence bound.
 
@@ -818,13 +820,13 @@ class Emulator:
         """
 
         #  closures defines objective function and jacobian with assigned beta
-        def obj(x):
-            return self._gp.ucb(x, float(beta))
+        def obj(xstar):
+            return self._gp.ucb(xstar, float(beta))
 
-        def obj_jac(x):
-            return self._gp.ucb_jac(x, float(beta))
+        def obj_jac(xstar):
+            return self._gp.ucb_jac(xstar, float(beta))
 
-        opts = {
+        opts: Mapping[str, Any] = {
             'x0': x0,
             'grid': grid,
             'grid_size': grid_size,
@@ -836,9 +838,9 @@ class Emulator:
 
     def sobol1(
             self,
-            n: typing.Optional[int] = 1000,
-            method: typing.Optional[str] = 'sobol',
-            seed: typing.Optional[int] = None,
+            n: int = 1000,
+            method: str = 'sobol',
+            seed: Optional[int] = None,
     ) -> np.ndarray:
         """ Calculate first order Sobol indices for the emulator.
 
@@ -867,7 +869,6 @@ class Emulator:
         Computer Physics Communications, 181(2), pp.259-270.
         """
 
-        # TODO: snake_case names for variables in here
         x = sampling.sample_hypercube(n, 2*self.d, method=method, seed=seed)
         A = x[:, :self.d]
         B = x[:, self.d:]
@@ -892,8 +893,7 @@ class Emulator:
                 param_name,
                 self.info
             )
-        else:
-            raise RuntimeError('Method only valid for models fit using HMC.')
+        raise RuntimeError('Method is only valid for models fit using HMC.')
 
     def plot_divergences(self) -> None:
         """ Parallel co-ordinates plot of sampler behaviour
@@ -905,5 +905,4 @@ class Emulator:
                 self.hyperparameters,
                 self.info
             )
-        else:
-            raise RuntimeError('Method only valid for models fit using HMC.')
+        raise RuntimeError('Method is only valid for models fit using HMC.')

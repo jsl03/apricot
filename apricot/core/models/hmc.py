@@ -1,13 +1,20 @@
 # This file is licensed under Version 3.0 of the GNU General Public
 # License. See LICENSE for a text of the license.
 # ------------------------------------------------------------------------------
-import typing
-import numpy as np
+from typing import (
+    cast, Optional, Union, Dict, Any, List, Sequence, Tuple, Iterable
+)
+import numpy as np  # type: ignore
 from apricot.core import utils
-from apricot.core.logger import get_logger, log_options
+from apricot.core.logger import get_logger
+from apricot.core.models import type_aliases as ta
+
+LOGGER = get_logger()
 
 
-logger = get_logger()
+# to satisfy forward typecheck for interface in run_hmc
+if False:
+    import apricot
 
 
 def run_hmc(
@@ -15,16 +22,16 @@ def run_hmc(
         x: np.ndarray,
         y: np.ndarray,
         jitter: float = 1e-10,
-        fit_options: typing.Optional[dict] = None,
+        ls_options: Optional[ta.LsPriorOptions] = None,
         samples: int = 2000,
         thin: int = 1,
         chains: int = 4,
         adapt_delta: float = 0.8,
         max_treedepth: int = 10,
-        seed: typing.Optional[int] = None,
+        seed: Optional[int] = None,
         permute: bool = True,
-        init_method: typing.Union[str, int] = 'stable',
-) -> typing.Union[np.ndarray, dict]:
+        init_method: ta.InitTypes = 'stable',
+) -> Tuple[np.ndarray, Dict[str, Any]]:
     """Run Stan's HMC algorithm for the provided model.
 
     This is the model interface to Stan's implementation of the No-U-Turn
@@ -73,14 +80,10 @@ def run_hmc(
     if seed is None:
         seed = utils.random_seed()
 
-    data = interface.make_pystan_dict(x, y, jitter, fit_options, seed=seed)
+    data = interface.make_pystan_dict(x, y, jitter, ls_options, seed=seed)
     init = interface.get_init(init_method, data)
 
-    # if init is a dict, it needs to be cloned for each chain
-    if type(init) is dict:
-        init_sampler = [init] * chains
-    else:
-        init_sampler = init
+    init_sampler = assign_init(init, chains)
 
     control = {
         'adapt_delta': adapt_delta,
@@ -97,34 +100,30 @@ def run_hmc(
         'seed': seed,
     }
 
-    logger.debug(
-        'Initialising sampler with: \n{0}'.format(log_options(opts))
-    )
-
     result = interface.pystan_model.sampling(**opts)
     samples, info = _hmc_post_internal(result, permute=permute, seed=seed)
     info['seed'] = seed
     info['init'] = init_sampler
-    info['passed_rhat'] = _check_rhat(info['rhat'])
-    info['passed_divergences'] = _check_divergent(info['divergent'])
-    info['passed_saturation'] = _check_tree_saturation(
+    info['passed_rhat'] = check_rhat(info['rhat'])
+    info['passed_divergences'] = check_divergent(info['divergent'])
+    info['passed_saturation'] = check_tree_saturation(
         info['excess_treedepth'],
         info['max_treedepth']
     )
-    info['passed_ebfmi'] = _check_ebfmi(info['e_bfmi'])
+    info['passed_ebfmi'] = check_ebfmi(info['e_bfmi'])
     return samples, info
 
 
 def _hmc_post_internal(
-        result: dict,
+        result,
         permute: bool = True,
-        seed: typing.Optional[int] = None,
-) -> typing.Union[np.ndarray, dict]:
+        seed: Optional[int] = None,
+) -> Tuple[np.ndarray, Dict[str, Any]]:
     """
 
     Parameters
     ----------
-    result : dict
+    result:
         Raw pyStan.sampling output.
     permute: bool
         Bool.
@@ -179,17 +178,11 @@ def _hmc_post_internal(
         chain_id[a: b] = chain + 1
         excess_treedepth[a: b] = max_td - sampler_params[chain]['treedepth__']
         divergent[a: b] = sampler_params[chain]['divergent__']
-        e_bfmi[chain] = _calc_ebfmi(sampler_params[chain]['energy__'])
+        e_bfmi[chain] = calc_ebfmi(sampler_params[chain]['energy__'])
 
     if permute:
-        samples, chain_id, treedepth, divergent = _permute_aligned(
-            (
-                samples,
-                chain_id,
-                excess_treedepth,
-                divergent
-            ),
-            seed
+        samples, chain_id, treedepth, divergent = permute_aligned(
+            (samples, chain_id, excess_treedepth, divergent), seed
         )
 
     info = {
@@ -206,7 +199,17 @@ def _hmc_post_internal(
     return samples, info
 
 
-def _same_lengths(arrays: typing.List[np.ndarray]) -> bool:
+def assign_init(init: ta.InitTypes, chains: int) -> ta.PyStanInitTypes:
+    """ If init is single a dictionary, it must be copied for each chain."""
+    if isinstance(init, dict):
+        return [cast(ta.InitData, init)] * chains
+    # if init is not a dict, it is either a string, literal zero, a list of
+    # either of the preceeding, or a list of dictionaries. Necessary to make
+    # mypy aware of this explicitly
+    return cast(Union[List[ta.InitData], List[str], List[int], str, int], init)
+
+
+def same_lengths(arrays: Sequence[np.ndarray]) -> bool:
     """Check if all supplied arrays are the same shape in dimension 0"""
     n = None
     for a in arrays:
@@ -217,10 +220,10 @@ def _same_lengths(arrays: typing.List[np.ndarray]) -> bool:
     return True
 
 
-def _permute_aligned(
-        arrays: typing.List[np.ndarray],
-        seed: typing.Optional[int] = None,
-) -> typing.Sequence[np.ndarray]:
+def permute_aligned(
+        arrays: Sequence[np.ndarray],
+        seed: Optional[int] = None,
+) -> List[np.ndarray]:
     """ Permute arrays, retaining row alignment.
 
     Permute each array in arrays along axis 0 using the same
@@ -236,7 +239,7 @@ def _permute_aligned(
     permuted arrays : tuple of ndarray
         The permuted arrays.
     """
-    if not _same_lengths(arrays):
+    if not same_lengths(arrays):
         raise ValueError(
             'Not all provided arrays have identical shapes in axis 0.'
         )
@@ -244,16 +247,16 @@ def _permute_aligned(
     if seed:
         np.random.seed(seed)
     index = np.random.permutation(n)
-    return (array[index] for array in arrays)
+    return [array[index] for array in arrays]
 
 
-def _calc_ebfmi(energy: np.ndarray) -> np.ndarray:
+def calc_ebfmi(energy: np.ndarray) -> np.ndarray:
     """ Expected Bayesian Fraction of Missing Information. """
     tmp = np.sum((energy[1:] - energy[:-1])**2) / energy.shape[0]
     return tmp / np.var(energy)
 
 
-def _check_tree_saturation(
+def check_tree_saturation(
         excess_treedepth: np.ndarray,
         max_treedepth: int
 ) -> bool:
@@ -265,7 +268,7 @@ def _check_tree_saturation(
     return passed
 
 
-def _check_ebfmi(ebfmi) -> bool:
+def check_ebfmi(ebfmi) -> bool:
     """ Check that ebfmi > 0.2. """
     passed = True
     for i, tmp in enumerate(ebfmi < 0.2):
@@ -274,7 +277,7 @@ def _check_ebfmi(ebfmi) -> bool:
     return passed
 
 
-def _check_divergent(divergent: np.ndarray) -> bool:
+def check_divergent(divergent: np.ndarray) -> bool:
     """ Check for divergences. """
     passed = True
     ndivergent = np.sum(divergent)
@@ -283,7 +286,7 @@ def _check_divergent(divergent: np.ndarray) -> bool:
     return passed
 
 
-def _check_rhat(rhat) -> bool:
+def check_rhat(rhat) -> bool:
     """ Check rhat < 1.1. """
     passed = True
     for r in rhat:

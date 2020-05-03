@@ -1,39 +1,44 @@
-# This file is licensed under Version 3.0 of the GNU General Public
-# License. See LICENSE for a text of the license.
-# ------------------------------------------------------------------------------
+"""
+Custom exception classes used throughout the package.
+
+-------------------------------------------------------------------------------
+This file is licensed under Version 3.0 of the GNU General Public
+License. See LICENSE for a text of the license.
+"""
+from typing import Tuple, Any
 
 
-def _raise_NotImplemented(
+def raise_NotImplemented(  # pylint: disable=invalid-name
         model_part_identifier: str,
         name: str,
-        available: dict
-) -> None:
+        available: Any,  # TODO use protocol type implementing __repl__
+) -> Exception:
     """ Standard error format for requested options that do not exist.
 
     Raises
     ------
     NotImplementedError
     """
-
-    raise NotImplementedError(
-        'Unrecognised {0} "{1}": must be one of {2}'.format(
-            model_part_identifier,
-            name,
-            available.keys()
-        )
-    ) from None
+    msg = 'Unrecognised {0} "{1}": must be one of {2}'.format(
+        model_part_identifier,
+        name,
+        available.keys()
+    )
+    raise NotImplementedError(msg) from None
 
 
-def _raise_NotParsed(name: str, _type: type) -> None:
+def raise_NotParsed(  # pylint: disable=invalid-name
+        name: str,
+        _type: type
+) -> Exception:
     """ Standard error format for arguments that could not be parsed.
 
     Raises
     ------
     TypeError
     """
-    raise TypeError(
-        "Could not parse {n} with type {t}.".format(n=name, t=_type)
-    ) from None
+    msg = "Could not parse {n} with type {t}.".format(n=name, t=_type)
+    raise TypeError(msg) from None
 
 
 class ShapeError(Exception):
@@ -44,9 +49,9 @@ class ShapeError(Exception):
     def __init__(
             self,
             identifier: str,
-            d0_required: int,
+            d0_required: str,
             d1_required: int,
-            provided: (int, int),
+            provided: Tuple[int, int],
     ) -> None:
 
         self.info = {
@@ -57,8 +62,10 @@ class ShapeError(Exception):
         }
 
     def __str__(self) -> str:
-        return "Received array '{arr}' of shape {p}: "
-        "shape of ({r0}, {r1}) required.".format(**self.info)
+        return (
+            "Received array '{arr}' of shape {p}: "
+            "shape of ({r0}, {r1}) required.".format(**self.info)
+        )
 
 
 class MissingParameterError(Exception):
@@ -66,8 +73,10 @@ class MissingParameterError(Exception):
     not provided by the hyperparameter dictionary."""
 
     def __init__(self, name: str) -> None:
-        self.message = ("Model tried to access unavailable hyperparameter "
-                        "{0}".format(name))
+        self.message = (
+            "Model tried to access unavailable hyperparameter "
+            "{0}".format(name)
+        )
 
     def __str__(self) -> str:
         return self.message

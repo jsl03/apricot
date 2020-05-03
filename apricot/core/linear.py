@@ -1,14 +1,16 @@
-# This file is licensed under Version 3.0 of the GNU General Public
-# License. See LICENSE for a text of the license.
-# ------------------------------------------------------------------------------
+"""
+DOCSTRING
 
-# NOTE experimental module
+-------------------------------------------------------------------------------
+This file is licensed under Version 3.0 of the GNU General Public
+License. See LICENSE for a text of the license.
+"""
 
 import typing
-import pystan
 import functools
-import numpy as np
-from scipy import stats
+import pystan  # type: ignore
+import numpy as np  # type: ignore
+from scipy import stats  # type: ignore
 
 
 LREG_QR = """
@@ -45,11 +47,12 @@ generated quantities {
 
 @functools.lru_cache(maxsize=1)
 def get_lreg_model() -> pystan.StanModel:
+    """ Return pyStan linear regression model """
     return pystan.StanModel(model_code=LREG_QR)
 
 
 class LinearModel(object):
-
+    """ Bayesian Linear Regression (QR parametrisation) """
     def __init__(self, x: np.ndarray, y: np.ndarray) -> None:
         n, d = x.shape
         data = {
@@ -67,18 +70,21 @@ class LinearModel(object):
         self.m = self.alpha.shape[0]
 
     def expectation(self, xstar: np.ndarray):
+        """ Posterior expectation"""
         ystar = np.zeros(xstar.shape[0], order='C')
         for i in range(self.m):
             ystar += np.dot(xstar, self.beta[i, :]) + self.alpha[i]
         return ystar / self.m
 
     def predict(self, xstar: np.ndarray) -> typing.Tuple[np.ndarray, np.ndarray]:
+        """ Predictive distributions"""
         mu = np.empty((self.m, xstar.shape[0]), order='C')
         for i in range(self.m):
             mu[i, :] = np.dot(xstar, self.beta[i, :]) + self.alpha[i]
         return mu, self.sigma
 
     def lppd(self, xstar: np.ndarray, y: np.ndarray) -> np.ndarray:
+        """Log Pointwise Predictive Densities"""
         n = y.shape[0]
         lppd = np.empty((self.m, n), order='C')
         for i in range(self.m):

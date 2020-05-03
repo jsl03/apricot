@@ -2,30 +2,25 @@
 # License. See LICENSE for a text of the license.
 # ------------------------------------------------------------------------------
 import copy
-from apricot.core import exceptions
+from typing import Dict, Any, Union
 from apricot.core.models.build.components import StanModelKernel
 from apricot.core.models.build.code_snippets import (
-    L_cov_eq_xi,
-    L_cov_m52_xi,
-    L_cov_m32_xi,
-    L_cov_rq_xi,
-    input_warping
+    L_COV_EQ_XI,
+    L_COV_M52_XI,
+    L_COV_M32_XI,
+    L_COV_RQ_XI,
+    INPUT_WARPING
 )
 
 
-# TODO use parse module instead
-def find_kernel(name, warping):
-    try:
-        kernel_options = AVAILABLE[name]
-    except KeyError:
-        exceptions._raise_NotImplemented('kernel', name, AVAILABLE)
+def find_kernel(name: str, warping: Union[bool, str]) -> Dict[str, Any]:
+    kernel_options = AVAILABLE[name]
     if warping:
         return _apply_warping(kernel_options)
-    else:
-        return _apply(kernel_options)
+    return _apply(kernel_options)
 
 
-def make_kernel(kernel_type, warping):
+def make_kernel(kernel_type: str, warping: Union[bool, str]) -> StanModelKernel:
     kernel_options = find_kernel(kernel_type, warping)
     return StanModelKernel(**kernel_options)
 
@@ -64,10 +59,10 @@ GP_DATA_PRIORS_GENERIC = [
 ]
 
 
-kernel_eq = {
+KERNEL_EQ = {
     'name': 'eq',
-    'functions': L_cov_eq_xi,
-    'data': GP_DATA_GENERIC, 
+    'functions': L_COV_EQ_XI,
+    'data': GP_DATA_GENERIC,
     'transformed_data': None,
     'parameters': GP_PARAMETERS_GENERIC,
     'kernel_signature': 'L_cov_eq_xi(__x__, amp, ls, xi, jitter, n)',
@@ -78,9 +73,9 @@ kernel_eq = {
 }
 
 
-kernel_eq_flat = {
+KERNEL_EQ_FLAT = {
     'name': 'eq_flat',
-    'functions': L_cov_eq_xi,
+    'functions': L_COV_EQ_XI,
     'data': [],
     'transformed_data': None,
     'parameters': GP_PARAMETERS_GENERIC,
@@ -92,9 +87,9 @@ kernel_eq_flat = {
 }
 
 
-kernel_m52 = {
+KERNEL_M52 = {
     'name': 'm52',
-    'functions': L_cov_m52_xi,
+    'functions': L_COV_M52_XI,
     'data': GP_DATA_GENERIC,
     'transformed_data': None,
     'parameters': GP_PARAMETERS_GENERIC,
@@ -106,9 +101,9 @@ kernel_m52 = {
 }
 
 
-kernel_m32 = {
+KERNEL_M32 = {
     'name': 'm32',
-    'functions': L_cov_m32_xi,
+    'functions': L_COV_M32_XI,
     'data': GP_DATA_GENERIC,
     'transformed_data': None,
     'parameters': GP_PARAMETERS_GENERIC,
@@ -120,9 +115,9 @@ kernel_m32 = {
 }
 
 
-kernel_rq = {
+KERNEL_RQ = {
     'name': 'rq',
-    'functions': L_cov_rq_xi,
+    'functions': L_COV_RQ_XI,
     'data': GP_DATA_GENERIC + [
         'real kappa_loc;',
         'real<lower=0> kappa_scale;'
@@ -146,7 +141,39 @@ kernel_rq = {
 }
 
 
-def _apply_warping(_kernel):
+def _apply_warping(_kernel: Dict[str, Any]) -> Dict[str, Any]:
+    """ Adds generic code for input warping into the required data fields.
+
+    Summary of Stan model code changes:
+
+    Name:
+        Appends "_warped"
+
+    Data:
+        Adds data fields:
+        * alpha_warp_mu
+            Lognormal distribution mean for warping parameter alpha
+        * alpha_warp_sigma
+            Lognormal distribution s.d. for warping parameter alpha
+        * beta_warp_mu
+            Lognormal distribution mean for warping parameter beta
+        * beta_warp_sigma
+            Lognormal distribution s.d. for warping parameter beta
+
+    Parameters:
+        Adds parameters:
+        * alpha_warp
+        * beta_warp
+
+    Transformed Parameters:
+        Adds input warping transformation x -> x_warped via Beta CDF
+        (see Snoek et. al. 2014)
+
+    Model:
+        Adds:
+        * alpha_warp ~ lognormal(alpha_warp_mu, alpha_warp_sigma)
+        * beta_warp ~ lognormal(beta_warp_mu, beta_warp_sigma)
+    """
     kernel = copy.copy(_kernel)
     kernel['name'] = kernel['name'] + '_warped'
     kernel['data'] = kernel['data'] + [
@@ -159,7 +186,7 @@ def _apply_warping(_kernel):
         'vector<lower=0>[d] alpha_warp;',
         'vector<lower=0>[d] beta_warp;'
     ]
-    kernel['transformed_parameters'] = input_warping
+    kernel['transformed_parameters'] = INPUT_WARPING
     kernel['kernel_signature'] = _warp_sig(kernel['kernel_signature'])
     kernel['args'] = kernel['args'] + [
         ('alpha_warp', 'd'),
@@ -182,24 +209,33 @@ def _apply_warping(_kernel):
     return kernel
 
 
-def _apply(_kernel):
+def _apply(_kernel: Dict[str, Any]) -> Dict[str, Any]:
+    """ Apply the correct function signature to the covariance kernel.
+
+    If the kernel features warping, change the function signature of
+    the call to the covariance kernel to use "x_warped".
+
+    Otherwise, change the function signature to use "x".
+    """
     kernel = copy.copy(_kernel)
     kernel['kernel_signature'] = _default_sig(kernel['kernel_signature'])
     return kernel
 
 
-def _warp_sig(sig):
+def _warp_sig(sig: str) -> str:
+    """ Replace __x__ with x_warped in the covariance kernel call."""
     return sig.replace('__x__', 'x_warped')
 
 
-def _default_sig(sig):
+def _default_sig(sig: str) -> str:
+    """ Replace __x__ with x in the covariance kernel call."""
     return sig.replace('__x__', 'x')
 
 
 AVAILABLE = {
-    'eq': kernel_eq,
-    'eq_flat': kernel_eq_flat,
-    'm52': kernel_m52,
-    'm32': kernel_m32,
-    'rq': kernel_rq,
+    'eq': KERNEL_EQ,
+    'eq_flat': KERNEL_EQ_FLAT,
+    'm52': KERNEL_M52,
+    'm32': KERNEL_M32,
+    'rq': KERNEL_RQ,
 }

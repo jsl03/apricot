@@ -1,11 +1,12 @@
 # This file is licensed under Version 3.0 of the GNU General Public
 # License. See LICENSE for a text of the license.
 # ------------------------------------------------------------------------------
-import typing
+from typing import Union, List, Optional, Any
 from apricot.core import utils
 from apricot.core.models.build import filenames
 
-Model_Code_Type = typing.Optional[typing.Union[typing.List[str], str]]
+
+ModelCode = Optional[Union[List[str], str]]
 
 
 # TODO tidy this up; some options are deprecated (is args still used?)
@@ -13,16 +14,16 @@ class StanModelPart:
 
     def __init__(
             self,
-            name: typing.Optional[str] = None,
-            functions: Model_Code_Type = None,
-            data: Model_Code_Type = None,
-            transformed_data: Model_Code_Type = None,
-            parameters: Model_Code_Type = None,
-            transformed_parameters: Model_Code_Type = None,
-            model: Model_Code_Type = None,
-            args: Model_Code_Type = None,
-            to_sample: Model_Code_Type = None,
-            data_priors: Model_Code_Type = None,
+            name: Optional[str] = None,
+            functions: ModelCode = None,
+            data: ModelCode = None,
+            transformed_data: ModelCode = None,
+            parameters: ModelCode = None,
+            transformed_parameters: ModelCode = None,
+            model: ModelCode = None,
+            args: ModelCode = None,
+            to_sample: ModelCode = None,
+            data_priors: ModelCode = None,
     ):
 
         self._name = name
@@ -92,7 +93,6 @@ class StanModelPart:
         return self._data_priors
 
     def __iter__(self):
-        # TODO: find a better way of doing this
         # calling iter on the class accesses a generator yielding the model
         # code blocks, for example:
         # >>> for block in model_component:
@@ -111,17 +111,17 @@ class StanModelKernel(StanModelPart):
 
     def __init__(
             self,
-            name: typing.Optional[str] = None,
-            functions: Model_Code_Type = None,
-            data: Model_Code_Type = None,
-            transformed_data: Model_Code_Type = None,
-            parameters: Model_Code_Type = None,
-            transformed_parameters: Model_Code_Type = None,
-            model: Model_Code_Type = None,
-            kernel_signature: typing.Optional[str] = None,
-            args: Model_Code_Type = None,
-            to_sample: Model_Code_Type = None,
-            data_priors: Model_Code_Type = None,
+            name: Optional[str] = None,
+            functions: ModelCode = None,
+            data: ModelCode = None,
+            transformed_data: ModelCode = None,
+            parameters: ModelCode = None,
+            transformed_parameters: ModelCode = None,
+            model: ModelCode = None,
+            kernel_signature: Optional[str] = None,
+            args: ModelCode = None,
+            to_sample: ModelCode = None,
+            data_priors: ModelCode = None,
     ):
 
         self._name = name
@@ -146,20 +146,21 @@ class StanModelKernel(StanModelPart):
 
 
 class StanModelMeanFunction(StanModelPart):
+
     @property
     def filename_component(self):
         return filenames.mean_part_filename(self._name)
 
 
 class StanModelNoise(StanModelPart):
+
     @property
     def filename_component(self):
         return filenames.noise_part_filename(self._name)
 
 
-def none_to_list(x: typing.Any):
+def none_to_list(x: Optional[Any]) -> Any:
     """ If x is None, turn it into an empty list. """
     if x is None:
         return []
-    else:
-        return x
+    return x

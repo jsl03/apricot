@@ -27,11 +27,11 @@ def assmeble_model_code(
     model_code : str
         pyStan model code, as a string.
     """
-    core_part = core_parts._get_core()
-    return _fuse_code_blocks(core_part, kernel_part, mean_part, noise_part)
+    core_part = core_parts.get_core()
+    return fuse_code_blocks(core_part, kernel_part, mean_part, noise_part)
 
 
-def _fuse_code_blocks(
+def fuse_code_blocks(
         core: components.StanModelPart,
         kernel: components.StanModelKernel,
         mean: components.StanModelMeanFunction,
@@ -74,11 +74,11 @@ def _fuse_code_blocks(
     for block in model_code:
         formatted_blocks.append(block.replace('\n', '\n  '))
 
-    model_blocks = (_fuse(n, b) for n, b in zip(names, formatted_blocks))
+    model_blocks = (fuse(n, b) for n, b in zip(names, formatted_blocks))
 
     # join blocks together with newlines and we're done
     return '\n'.join(model_blocks)
 
 
-def _fuse(name: str, block: str) -> str:
+def fuse(name: str, block: str) -> str:
     return '{0} {{\n  {1}\n}}'.format(name, block)

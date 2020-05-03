@@ -1,19 +1,27 @@
 # This file is licensed under Version 3.0 of the GNU General Public
 # License. See LICENSE for a text of the license.
 # ------------------------------------------------------------------------------
-from apricot.core.models.build.code_snippets import x_to_matrix
-from apricot.core.models.build.code_snippets import mu_to_zeros
-from apricot.core.models.build.code_snippets import x_dot_beta
+from typing import (
+    Dict,
+    Any,
+    Mapping,
+    Union,
+    Iterable
+)
+from apricot.core.models.build.code_snippets import (
+    X_TO_MATRIX,
+    MU_TO_ZEROS,
+    X_DOT_BETA,
+)
 from apricot.core.models.build.components import StanModelMeanFunction
-from apricot.core.exceptions import _raise_NotImplemented
 
 
-mean_linear = {
+MEAN_LINEAR: Mapping[str, Union[str, Iterable[Any]]] = {
     'name': 'linear',
     'data': ['vector[d+1] beta_loc;', 'vector[d+1] beta_scale;'],
-    'transformed_data': x_to_matrix,
+    'transformed_data': X_TO_MATRIX,
     'parameters': ['vector[d+1] beta;'],
-    'transformed_parameters': x_dot_beta,
+    'transformed_parameters': X_DOT_BETA,
     'model': ['beta ~ normal(beta_loc, beta_scale);'],
     'args': [('beta', 'd+1')],
     'to_sample': ['beta'],
@@ -21,26 +29,17 @@ mean_linear = {
 }
 
 
-mean_zero = {
+MEAN_ZERO: Mapping[str, Union[str, Iterable[str]]] = {
     'name': 'zero',
-    'transformed_parameters': mu_to_zeros
+    'transformed_parameters': MU_TO_ZEROS
 }
 
 
-AVAILABLE = {
-    'linear': mean_linear,
-    'zero': mean_zero,
+AVAILABLE: Mapping[str, Mapping[str, Union[str, Iterable[str]]]] = {
+    'linear': MEAN_LINEAR,
+    'zero': MEAN_ZERO,
 }
 
 
-def find_mean(req_mean_type):
-    try:
-        mean_function_options = AVAILABLE[req_mean_type]
-    except KeyError:
-        _raise_NotImplemented('mean function', req_mean_type, AVAILABLE)
-    return mean_function_options
-
-
-def make_mean(mean_type):
-    mean_function_options = find_mean(mean_type)
-    return StanModelMeanFunction(**mean_function_options)
+def make_mean(mean_type: str) -> StanModelMeanFunction:
+    return StanModelMeanFunction(**AVAILABLE[mean_type])

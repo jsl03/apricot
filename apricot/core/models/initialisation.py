@@ -1,25 +1,28 @@
 # This file is licensed under Version 3.0 of the GNU General Public
 # License. See LICENSE for a text of the license.
 # ------------------------------------------------------------------------------
-import typing
-import numpy as np
-from apricot.core.models.prior import ls_inv_gamma
+from typing import Optional, Union, Dict, List, Any, Mapping, cast, Literal
+import numpy as np  # type: ignore
+from apricot.core.models import type_aliases as ta
 from apricot.core.logger import get_logger
+from apricot.core.models.prior import ls_inv_gamma
+
+# satisfy forward type checks
+if False:
+    import apricot
 
 
-logger = get_logger()
-Fit_Options = typing.Optional[typing.Union[str, dict]]
+LOGGER = get_logger()
 
 
-# TODO: refactor me; why are we getting a circular import here?
 def make_pystan_dict(
         interface_instance: 'apricot.core.models.interface.Interface',
         x: np.ndarray,
         y: np.ndarray,
         jitter: float = 1e-10,
-        fit_options: Fit_Options = None,
-        seed: typing.Optional[int] = None,
-) -> dict:
+        ls_options: ta.LsPriorOptions = None,
+        seed: Optional[int] = None,
+) -> ta.PyStanData:
     """ Make the 'data' dictionary to be supplied to the pystan model.
 
     The data dictionary contains the user-supplied information required to
@@ -37,7 +40,7 @@ def make_pystan_dict(
     jitter : float, optional
         Variance of stability jitter (square root this quantity for a standard
         deviation). Default = 1e-10.
-    fit_options : {None, str, list of str}, optional
+    ls_options : {None, str, list of str}, optional
         Additional fit options for each dimension of the index. If fit_options
         is a list, it must be of length d, where d is the dimension of the
         model's input space. If fit_options is a string, the requested options
@@ -54,7 +57,7 @@ def make_pystan_dict(
     """
 
     n, d = x.shape
-    data = {
+    data: Dict[Any, Union[int, float, np.ndarray]] = {
         'x': x,
         'y': y,
         'n': n,
@@ -67,7 +70,7 @@ def make_pystan_dict(
         # lengthscales use inverse gamma hyperprior
         ls_alpha, ls_beta = ls_inv_gamma.ls_inv_gamma_prior(
             x,
-            fit_options,
+            ls_options,
             seed=seed
         )
         data['ls_alpha'] = ls_alpha
@@ -105,14 +108,16 @@ def make_pystan_dict(
             data['alpha_warp_sigma'] = np.full(d, 0.5)
             data['beta_warp_mu'] = np.full(d, 2.0)
             data['beta_warp_sigma'] = np.full(d, 0.5)
+
+    cast(ta.PyStanData, data)
     return data
 
 
 def get_init(
         interface_instance: 'apricot.core.models.interface.Interface',
-        init: typing.Optional[typing.Union[dict, typing.List[str], str]],
-        stan_dict: dict,
-) -> typing.Union[dict, str, int]:
+        init: Optional[ta.InitTypes],
+        stan_dict: ta.PyStanData,
+) -> ta.InitTypes:
     """ Invoke various initialisation methods for the sampler.
 
     Parameters
@@ -154,26 +159,29 @@ def get_init(
         init = 'stable'
 
     # custom init, let pyStan raise its own exceptions if necessary
-    if type(init) is dict:
-        logger.debug('Initialisation: user.')
+    if isinstance(init, dict):
+        LOGGER.debug('Initialisation: user.')
         return init
-    elif type(init) is str:
+    elif isinstance(init, str):
         if init.lower() == 'stable':
-            logger.debug('Initialisation: stable.')
-            return _init_from_data(interface_instance, stan_dict)
+            LOGGER.debug('Initialisation: stable.')
+            return init_from_data(interface_instance, stan_dict)
         else:
-            logger.debug('Initialisation: {0}'.format(init))
-            return _init_from_str(init)
+            LOGGER.debug('Initialisation: {0}'.format(init))
+            return init_from_str(init)
+    elif isinstance(init, list):
+        # TODO: handle case in which init is a List. Must match
+        # the number of requested chains!
+        pass
     raise TypeError(
         'Unable to parse init option of type "{0}".'.format(type(init))
     )
 
 
-# TODO refactor
-def _init_from_data(
+def init_from_data(
         interface_instance: 'apricot.core.models.interface.Interface',
-        stan_dict: dict
-) -> dict:
+        stan_dict: ta.PyStanData
+) -> ta.InitData:
     """ Initialise from data.
 
     Use the data to identify suitable initialisation values for HMC.
@@ -193,7 +201,7 @@ def _init_from_data(
     x = stan_dict['x']
     y = stan_dict['y']
     d = stan_dict['d']
-    init = {'ls': np.std(x, axis=0) / 3.0}
+    init: Dict[Any, Union[np.ndarray, float]] = {'ls': np.std(x, axis=0) / 3.0}
     init['amp'] = np.std(y)
     if interface_instance.noise_type[0] == 'infer':
         init['xi'] = np.std(y) / 10.0
@@ -206,10 +214,12 @@ def _init_from_data(
         if interface_instance.warping == 'linear':
             init['alpha_warp'] = np.ones(d, dtype=np.float64)
             init['beta_warp'] = np.ones(d, dtype=np.float64)
+    # to satisfy type checker
+    cast(ta.InitData, init)
     return init
 
 
-def _init_from_str(init_str: str) -> typing.Union[str, int]:
+def init_from_str(init_str: str) -> Union[str, int]:
     """
 
     Parameters
@@ -227,7 +237,7 @@ def _init_from_str(init_str: str) -> typing.Union[str, int]:
     ValueError
        If init_str is not in {'random', '0', 'zero'}.
     """
-    options = {
+    options: Mapping[str, Union[str, int]] = {
         'random': 'random',
         '0': 0,
         'zero': 0,
@@ -235,6 +245,5 @@ def _init_from_str(init_str: str) -> typing.Union[str, int]:
     try:
         return options[init_str]
     except KeyError:
-        raise ValueError(
-            'Could not find init option matching "{0}".'.format(init_str)
-        ) from None
+        msg = 'Could not find init option matching "{0}".'.format(init_str)
+        raise ValueError(msg) from None

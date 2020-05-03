@@ -1,40 +1,42 @@
 # This file is licensed under Version 3.0 of the GNU General Public
 # License. See LICENSE for a text of the license.
 # ------------------------------------------------------------------------------
-import typing
+from typing import Union, Optional, Tuple
 from apricot.core import exceptions
+from apricot.core.logger import get_logger
 from apricot.core.models.build import mean_parts
 from apricot.core.models.build import noise_parts
 from apricot.core.models.build import kernel_parts
 
 
-# TODO some mypy type signatures messed up in this file
+LOGGER = get_logger()
 
 
 def parse_kernel(kernel_type: str):
     """Parse requested kernel option."""
     if kernel_type in kernel_parts.AVAILABLE:
         return kernel_type
-    else:
-        exceptions._raise_NotImplemented(
-            'kernel',
-            kernel_type,
-            kernel_parts.AVAILABLE
-        )
+    msg = (
+        "kernel must be one of {0}"
+        .format(kernel_parts.AVAILABLE)
+    )
+    raise ValueError(msg)
 
 
-def parse_noise(noise_type: typing.Any) -> typing.Union[str, float]:
-    """ Parse requested noise option.
+def parse_noise(
+        noise_type: Optional[Union[str, float]]
+) -> Tuple[str, Optional[float]]:
+    """ Parse requested noise option. 
 
     Parameters
     ----------
     noise_type : {None, str, float}
         * None : zero noise.
         * 'zero' : zero noise.
-        * 'infer' : infer the standard deviation of Gaussian white noise as a
-        hyperparameter.
+        * 'infer' : infer the standard deviation of additivie Gaussian (white)
+            noise as a model hyperparameter.
         * float : Gaussian white noise of standard deviation equivalent to
-        noise_type.
+            noise_type.
 
     Returns
     -------
@@ -43,33 +45,72 @@ def parse_noise(noise_type: typing.Any) -> typing.Union[str, float]:
     noise_value : {None, float}
         Either a floating point number or None.
     """
+
     if noise_type is None:
-        noise = 0.0
-    # find out how to tell mypy this is a str
-    elif type(noise_type) is str:
-        as_str = noise_type.lower()
-        noise = _parse_noise_str(as_str)
-    # find out how to tell mypy this is a float
+        return parse_noise_internal(0)
+
+    elif isinstance(noise_type, str):
+        return parse_noise_internal(parse_noise_str(noise_type.lower()))
+
     else:
-        noise = _parse_noise_float(noise_type)
-    return _parse_noise_internal(noise)
+        return parse_noise_internal(parse_noise_float(noise_type))
 
 
-def _parse_noise_str(as_str: str) -> typing.Union[float, str]:
-    """ Parse noise options that are strings. """
-    if as_str == 'zero' or as_str == 'none':
+def parse_noise_str(as_str: str) -> Union[float, str]:
+    """ Parse noise options that are strings.
+
+    Parameters
+    ----------
+    as_str: str
+        String instance describing a noise type option:
+        * 'zero': zero noise; equivalent to passing noise = 0.
+        * 'none': treated equivalently to 'zero' (see above).
+        * 'infer': treat the standard deviation of additive Gaussian noise as a
+             model hyperparameter and infer it as part of the model.
+
+    Returns
+    -------
+    noise: {str, float}
+        Either a floating point number representing the deterministic standard
+        deviation of additive Gaussian noise; or "infer", indicating the
+        standard deviation of additive Gaussian noise should be treated as a
+        model hyperparameter.
+    """
+    if as_str in ['zero', 'none']:
         return 0.0
     if as_str == 'infer':
         return 'infer'
-    exceptions._raise_NotImplemented(
-        'noise function',
-        as_str,
-        noise_parts.AVAILABLE
+    msg = (
+        "noise model must be one of {0}"
+        .format(noise_parts.AVAILABLE)
     )
+    raise ValueError(msg)
 
 
-def _parse_noise_float(noise_type: typing.Any) -> float:
-    """ Parse noise options that can be treated as floating point numbers. """
+def parse_noise_float(noise_type: float) -> float:
+    """ Parse noise options that can be treated as floating point numbers.
+
+    Attempts to cast noise_type as a float. This is necessary as Stan
+    will not implcitly convert (for example) an integer to a floating point
+    number.
+
+    Parameters
+    ----------
+    noise_type: {float, int}
+        User supplied noise type option. Either the value of additive Gaussian
+        noise represented as a string or a floating point number.
+
+    Returns
+    -------
+    noise: float
+        User supplied noise option, cast as a floating point number.
+
+    Raises
+    ------
+    TypeError
+        If noise_type cannot be cast as a float (noise options matching
+        compatible string options are matched before here).
+    """
     try:
         noise = float(noise_type)
     except ValueError:
@@ -80,18 +121,36 @@ def _parse_noise_float(noise_type: typing.Any) -> float:
     return noise
 
 
-def _parse_noise_internal(noise: typing.Union[str, typing.Optional[float]]):
-    """ Assign noise options to required format. """
-    if type(noise) is float:
-        noise_option = 'deterministic'
-        value = noise
-    else:
-        noise_option = 'infer'
-        value = None
-    return noise_option, value
+def parse_noise_internal(noise: Union[str, float]
+) -> Tuple[str, Optional[float]]:
+    """ Assign noise options to required format.
+
+    Really just packages noise_option and its value (if present) into a tuple.
+
+    Parameters
+    ----------
+    noise: {str, float}
+        Noise option. If noise is a float, it is assumed to represent the
+        (deterministic) standard deviation of additive Gaussian noise to be
+        applied to the model. If noise is a string, it must match "infer", in
+        which case the standard deviation of additive Gaussian noise will be
+        treated as a hyperparameter and estimated from data.
+
+    Returns
+    -------
+    noise_option: str
+        Either "deterministic" or "infer".
+    value: {float, None}
+        If noise_option = "deterministic", contains the standard deviation of
+        the additive Gaussian noise to include in the model. If noise_option =
+        "infer", value is None.
+    """
+    if isinstance(noise, float):
+        return 'deterministic', noise
+    return 'infer', None
 
 
-def parse_mean(mean_type: typing.Optional[typing.Union[str, float]]):
+def parse_mean(mean_type: Optional[Union[str, int]]) -> str:
     """ Parse requested mean function option.
 
     Parameters
@@ -114,34 +173,35 @@ def parse_mean(mean_type: typing.Optional[typing.Union[str, float]]):
     """
     if mean_type is None:
         return 'zero'
-    if type(mean_type) is str:
-        return _parse_mean_str(mean_type.lower())
-    else:
-        return _parse_mean_other(mean_type)
+    if isinstance(mean_type, str):
+        return parse_mean_str(mean_type.lower())
+    return parse_mean_other(mean_type)
 
 
-def _parse_mean_str(as_str: str):
+def parse_mean_str(as_str: str) -> str:
     if as_str == 'zero':
         return 'zero'
-    elif as_str == 'linear':
+    if as_str == 'linear':
+        LOGGER.warning('Linear mean not yet supported by internal GP!')
         return 'linear'
-    else:
-        exceptions._raise_NotImplemented(
-            'mean function',
-            as_str,
-            mean_parts.AVAILABLE
-        )
+    msg = (
+        "mean function must be one of {0}"
+        .format(mean_parts.AVAILABLE)
+    )
+    raise ValueError(msg)
 
 
-# realistically, mean_type can only be 0 or we raise an exception
-def _parse_mean_other(mean_type: int):
+def parse_mean_other(mean_type: int) -> str:
     if mean_type == 0:
         return 'zero'
-    else:
-        exceptions._raise_NotParsed('mean function', type(mean_type))
+    msg = (
+        "mean function must be one of {0}"
+        .format(mean_parts.AVAILABLE)
+    )
+    raise ValueError(msg)
 
 
-def parse_warping(warping: typing.Optional[typing.Union[bool, str]]):
+def parse_warping(warping: Optional[str]) -> Union[bool, str]:
     """ Parse warping option.
 
     Parameters
@@ -156,20 +216,23 @@ def parse_warping(warping: typing.Optional[typing.Union[bool, str]]):
     -------
     warping_type : {bool, str}
         One of {False, 'linear', 'sigmoid'}
-
     """
     if warping is None:
         return False
-    elif type(warping) is str:
-        return _parse_warping_string(warping.lower())
-    else:
-        exceptions._raise_NotParsed('warping', type(warping))
+    if isinstance(warping, str):
+        return parse_warping_string(warping.lower())
+    msg = 'Could not parse warping option with type {0}.'.format(type(warping))
+    raise TypeError(msg)
 
 
-def _parse_warping_string(as_str: str):
+def parse_warping_string(as_str: str) -> Union[bool, str]:
     if as_str == 'none':
         return False
-    elif as_str == 'linear':
+    if as_str == 'linear':
         return 'linear'
-    elif as_str == 'sigmoid':
+    if as_str == 'sigmoid':
         return 'sigmoid'
+    msg = 'Uncrecognised warping option "{0}": must be one of {1}'.format(
+        as_str, [None, 'none', 'linear', 'sigmoid']
+    )
+    raise ValueError(msg)

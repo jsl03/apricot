@@ -1,8 +1,8 @@
 # This file is licensed under Version 3.0 of the GNU General Public
 # License. See LICENSE for a text of the license.
 # ------------------------------------------------------------------------------
-import typing
-import numpy as np
+from typing import Union
+import numpy as np  # type: ignore
 from apricot.core.sampling.hypercube import sample_hypercube
 
 
@@ -11,7 +11,7 @@ def max_entropy(
         n: int,
         pool: int = 200,
         method: str = 'lhs',
-) -> typing.Union[np.ndarray, float]:
+) -> Union[np.ndarray, float]:
     """ Maximum Entropy LHS sample
 
     Given an Emulator instance, select from a candidate pool of LHS experimental

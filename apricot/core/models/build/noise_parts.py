@@ -2,7 +2,6 @@
 # License. See LICENSE for a text of the license.
 # ------------------------------------------------------------------------------
 from apricot.core.models.build.components import StanModelNoise
-from apricot.core.exceptions import _raise_NotImplemented
 
 
 noise_infer = {
@@ -30,14 +29,5 @@ AVAILABLE = {
 }
 
 
-def find_noise(req_noise_type):
-    try:
-        noise_options = AVAILABLE[req_noise_type[0]]
-    except KeyError:
-        _raise_NotImplemented('noise type', req_noise_type, AVAILABLE)
-    return noise_options
-
-
 def make_noise(noise_type):
-    noise_options = find_noise(noise_type)
-    return StanModelNoise(**noise_options)
+    return StanModelNoise(**AVAILABLE[noise_type])

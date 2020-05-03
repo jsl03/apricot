@@ -21,8 +21,8 @@ Original code is available at http://people.sc.fsu.edu/~jburkardt/py_src/sobol/s
 """
 
 from __future__ import division  # deprecated; python2 compatibility not needed
-import typing
-import numpy as np
+from typing import Optional
+import numpy as np  # type: ignore
 import six
 from apricot.core.utils import set_seed
 
@@ -30,10 +30,10 @@ from apricot.core.utils import set_seed
 def sobol_scatter(
         n: int,
         d: int,
-        seed: typing.Optional[int] = None,
+        seed: Optional[int] = None,
         generator_seed: int = 1,
         skip: int = 0,
-):
+) -> np.ndarray:
     """ Generate n d-dimensional quasi-random vectors using the Sobol sequence,
     with additive uniform randomisation.
 
@@ -96,10 +96,10 @@ def sobol_scatter(
 def sobol(
         n: int,
         d: int,
-        seed: typing.Optional[int] = None,
-        generator_seed: typing.Optional[int] = 1,
+        seed: Optional[int] = None,
+        generator_seed: int = 1,
         skip: int = 0,
-):
+) -> np.ndarray:
     """ Generate n length d quasi-random vectors from the Sobol sequence.
 
     Generate n length d quasi-random vectors using the Sobol sequence [1]_.
@@ -175,6 +175,7 @@ def i4_bit_lo0(n: int):
         i //= 2
     return bit
 
+
 DIM_MAX = 40
 LOG_MAX = 30
 ATMOST = 2 ** LOG_MAX - 1
@@ -235,7 +236,7 @@ def prime_ge(n: int):
     return p
 
 
-def is_prime(n: int):
+def is_prime(n: int) -> bool:
     """ True if n is prime, else False.
 
     Original version by Corrado Chisari.

@@ -2,7 +2,7 @@
 # License. See LICENSE for a text of the license.
 # ------------------------------------------------------------------------------
 
-x_to_matrix = '\n'.join([
+X_TO_MATRIX = '\n'.join([
     'matrix[n, d + 1] X_matrix ;',
     'for (i in 1:n) {',
     '  X_matrix[i, 1] = 1;',
@@ -12,11 +12,11 @@ x_to_matrix = '\n'.join([
     '}',
 ])
 
-x_dot_beta = 'mu = X_matrix * beta;'
+X_DOT_BETA = 'mu = X_matrix * beta;'
 
-mu_to_zeros = 'mu = rep_vector(0,n);'
+MU_TO_ZEROS = 'mu = rep_vector(0,n);'
 
-L_cov_eq_xi = '\n'.join([
+L_COV_EQ_XI = '\n'.join([
     'matrix L_cov_eq_xi(vector[] x, real amp, vector ls, real xi, real jitter, int n) {',
     '  matrix[n, n] C;',
     '  real tmp;',
@@ -36,7 +36,7 @@ L_cov_eq_xi = '\n'.join([
     '}',
 ])
 
-L_cov_rq_xi = '\n'.join([
+L_COV_RQ_XI = '\n'.join([
     'matrix L_cov_rq_xi(vector[] x, real amp, real kappa, vector ls, real xi, real jitter, int n) {',
     '  matrix[n, n] C;',
     '  real tmp;',
@@ -56,7 +56,9 @@ L_cov_rq_xi = '\n'.join([
     '}',
 ])
 
-L_cov_m52_xi = '\n'.join([
+
+# TODO: vectorise inner r calculation
+L_COV_M52_XI = '\n'.join([
     'matrix L_cov_m52_xi(vector[] x, real amp, vector ls, real xi, real jitter, int n, int d) {',
     '  matrix[n, n] C;',
     '  real amp_sq = square(amp);',
@@ -84,7 +86,8 @@ L_cov_m52_xi = '\n'.join([
     '}',
 ])
 
-L_cov_m32_xi = '\n'.join([
+# TODO: vectorise inner r calculation
+L_COV_M32_XI = '\n'.join([
     'matrix L_cov_m32_xi(vector[] x, real amp, vector ls, real xi, real jitter, int n, int d) {',
     '  matrix[n, n] C;',
     '  real amp_sq = square(amp);',
@@ -112,11 +115,11 @@ L_cov_m32_xi = '\n'.join([
     '}',
 ])
 
-input_warping = '\n'.join([
-'vector[d] x_warped[n];',
-'for (i in 1:n) {',
-'  for (j in 1:d) {',
-'    x_warped[i][j] = beta_cdf(x[i][j], alpha_warp[j], beta_warp[j]);',
-'  }',
-'}',
+INPUT_WARPING = '\n'.join([
+    'vector[d] x_warped[n];',
+    'for (i in 1:n) {',
+    '  for (j in 1:d) {',
+    '    x_warped[i][j] = beta_cdf(x[i][j], alpha_warp[j], beta_warp[j]);',
+    '  }',
+    '}',
 ])

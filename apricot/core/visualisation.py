@@ -2,27 +2,25 @@
 # License. See LICENSE for a text of the license.
 # ------------------------------------------------------------------------------
 import re
-import typing
-import seaborn as sns
-import numpy as np
-from matplotlib import pyplot as plt
-from matplotlib import gridspec
+from typing import Optional, Tuple, Any, Dict
+import numpy as np  # type: ignore
+import seaborn as sns  # type: ignore
+from matplotlib import pyplot as plt  # type: ignore
+from matplotlib import gridspec  # type: ignore
+from apricot.core.models import type_aliases as ta
 
 
-sns_context = 'paper'
-sns_style = 'white'
-sns_palette = 'magma'
+SNS_CONTEXT = 'paper'
+SNS_STYLE = 'white'
+SNS_PALETTE = 'magma'
 
 
-sns.set_context(sns_context)
-sns.set_style(sns_style)
-sns.set_palette(sns_palette)
+sns.set_context(SNS_CONTEXT)
+sns.set_style(SNS_STYLE)
+sns.set_palette(SNS_PALETTE)
 
 
-Figure_Size = typing.Optional[typing.Tuple[float, float]]
-
-
-def _assign_param_name(name: str, ndim: int, dim: int, log: bool) -> str:
+def assign_param_name(name: str, ndim: int, dim: int, log: bool) -> str:
     """ Assign parameter name for plotting. """
     if log:
         _name = 'log {0}'.format(name)
@@ -35,43 +33,45 @@ def _assign_param_name(name: str, ndim: int, dim: int, log: bool) -> str:
     return param_name
 
 
-def _parse_param_str(s: str) -> typing.Tuple[str, typing.Optional[int]]:
-    """ Strip brackets from string s and return the bracketed value """
-    x_ = re.sub('\[.*\]', '', s)
-    match = re.search(r'\[(.*?)\]', s)
+def parse_param_str(param: str) -> Tuple[str, Optional[int]]:
+    """ Strip brackets from parameter string and return the bracketed value """
+    param_no_brackets = re.sub(r'\[.*\]', '', param)
+    match = re.search(r'\[(.*?)\]', param)
     if match:
-        return x_, int(match.group(1))
-    else:
-        return x_, None
+        return param_no_brackets, int(match.group(1))
+    return param_no_brackets, None
 
 
-def _get_param(hyperparameters: dict, col: str) -> np.ndarray:
-    name, dim = _parse_param_str(col)
-    if dim:  # parameter is vector valued
+def get_param(hyperparameters: ta.Hyperparameters, colname: str) -> np.ndarray:
+    """ Get the hyperparameters corresponding to col """
+    name, dim = parse_param_str(colname)
+    if dim:
         return hyperparameters[name][:, dim-1]
-    else:  # parameter is scalar valued
-        return hyperparameters[name][:, 0]
+    return hyperparameters[name][:, 0]
 
 
 def plot_parameter(
-    hyperparameters: dict,
-    name: str,
-    info: dict,
-    log_param: bool = False,
-    figsize: Figure_Size = None,
+        hyperparameters: ta.Hyperparameters,
+        name: str,
+        info: Dict[str, Any],
+        log_param: bool = False,
+        figsize: Optional[Tuple[float, float]] = None,
 ) -> None:
+    """ Visualise posterior distribution of named hyperparameter."""
     if figsize is None:
         figsize = (7, 3)
     ndim = hyperparameters[name].shape[1]
     plt.figure(figsize=(figsize[0], figsize[1] * ndim))
     gs = gridspec.GridSpec(ndim, 2)
     for dim in range(ndim):
-        param_name = _assign_param_name(name, ndim, dim, log_param)
+        param_name = assign_param_name(name, ndim, dim, log_param)
         ax0 = plt.subplot(gs[dim, 0])
         ax1 = plt.subplot(gs[dim, 1])
         nchains = int(max(info['sample_chain_id']))
         for chain in range(1, nchains+1):
-            data = hyperparameters[name][:, dim][info['sample_chain_id'] == chain]
+            data = hyperparameters[name][:, dim][
+                info['sample_chain_id'] == chain
+            ]
             if log_param:
                 data = np.log(data)
             sns.distplot(
@@ -95,10 +95,11 @@ def plot_parameter(
 
 
 def plot_divergences(
-    hyperparameters: dict,
-    info: dict,
-    figsize: Figure_Size = None,
+        hyperparameters: ta.Hyperparameters,
+        info: Dict[str, Any],
+        figsize: Optional[Tuple[float, float]] = None,
 ) -> None:
+    """ Parallel co-ordinates plot of any divergent sampler transitions. """
     if figsize is None:
         figsize = (7, 3)
     colnames = info['colnames']
@@ -108,7 +109,7 @@ def plot_divergences(
     idx_true = info['divergent'] == 1
     idx_false = info['divergent'] == 0
     data_array = np.array(
-        [_get_param(hyperparameters, col) for col in colnames]
+        [get_param(hyperparameters, col) for col in colnames]
     ).T
     col_mins = np.min(data_array, axis=0)
     col_maxs = np.max(data_array, axis=0)
@@ -130,3 +131,4 @@ def plot_divergences(
     ax.set_xlabel('parameter')
     ax.set_ylabel('normalised value')
     plt.show()
+

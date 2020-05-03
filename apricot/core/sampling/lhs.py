@@ -1,13 +1,14 @@
 # This file is licensed under Version 3.0 of the GNU General Public
 # License. See LICENSE for a text of the license.
 # ------------------------------------------------------------------------------
-import typing
-import numpy as np
-from scipy.spatial.distance import cdist
+from typing import cast, Optional, Union, Mapping, Any
+import numpy as np  # type: ignore
+from scipy.spatial.distance import cdist  # type: ignore
 from apricot.core.utils import set_seed
+from apricot.core.models import type_aliases as ta
 
 
-def _maximin(v: np.ndarray, p: int = 2):
+def _maximin(v: np.ndarray, p: int = 2) -> float:
     """ 'maximin' LHS quality criteria of Morris and Mitchell (1995).
 
     The maximin LHS optimality criterion of [1]_.
@@ -45,12 +46,12 @@ def _maximin(v: np.ndarray, p: int = 2):
 
 
 # dict of criteria usable by optimised_lhs
-_CRITERIA = {
+CRITERIA: Mapping[str, ta.LhsCriteria] = {
     'maximin': _maximin,
 }
 
 
-def lhs(n: int, d: int, seed: typing.Optional[int] = None):
+def lhs(n: int, d: int, seed: Optional[int] = None) -> np.ndarray:
     """ Latin Hypercube Sample design.
 
     Generate n stratified samples in d dimensions by drawing samples from a
@@ -72,7 +73,7 @@ def lhs(n: int, d: int, seed: typing.Optional[int] = None):
 
     Returns
     -------
-    s : ndarray
+    sample : ndarray
         (n,d) array of n sample points in d dimensions. Results are scaled on
         [0,1] by default.
 
@@ -83,16 +84,16 @@ def lhs(n: int, d: int, seed: typing.Optional[int] = None):
     """
     set_seed(seed)
     slices = np.linspace(0, 1, n+1)
-    urnd = np.random.random((n, d))
+    urnd = np.random.random((n, d))  # pylint: disable=no-member
     lower = slices[:n]
     upper = slices[1:]
     points = np.empty((n, d), order='C', dtype=np.float64)
-    s = np.empty((n, d), order='C', dtype=np.float64)
+    sample = np.empty((n, d), order='C', dtype=np.float64)
     for j in range(d):
         points[:, j] = urnd[:, j] * (upper - lower) + lower
         index = np.random.permutation(range(n))
-        s[:, j] = points[index, j]
-    return s
+        sample[:, j] = points[index, j]
+    return sample
 
 
 def mdurs(
@@ -101,8 +102,8 @@ def mdurs(
         scale_factor: int = 10,
         k: int = 2,
         measure: str = 'cityblock',
-        seed: typing.Optional[int] = None,
-):
+        seed: Optional[int] = None,
+) -> np.ndarray:
     """ Multi-Dimensionally Uniform Random Sample.
 
     Implements the "LHSMDU" algorithm of Deutsch and Deutsch [1]_.
@@ -140,8 +141,8 @@ def mdurs(
 
     Returns
     -------
-    S : ndarray
-        (n,d) array of n sample points in d dimensions. Results are scaled
+    random_sample : ndarray
+        (n, d) array of n sample points in d dimensions. Results are scaled
         on [0,1].
 
     Notes
@@ -164,27 +165,28 @@ def mdurs(
     scipy.spatial.distance.cdist
     """
     set_seed(seed)
-    nr = scale_factor * n
-    S = np.random.random((nr, d))
-    while S.shape[0] > n:
-        l = S.shape[0]
-        D = cdist(S, S, metric=measure)
-        ret = np.empty(l, dtype=np.float64, order='C')
-        for i in range(l):
-            ret[i] = np.mean(np.sort(D[i, :])[1:1 + k])
-        S = np.delete(S, np.argmin(ret), axis=0)
-    return S
+    n_init = scale_factor * n
+    random_sample = np.random.random((n_init, d))  # pylint: disable=no-member
+    while random_sample.shape[0] > n:
+        len_s = random_sample.shape[0]
+        distance_matrix = cdist(random_sample, random_sample, metric=measure)
+        ret = np.empty(len_s, dtype=np.float64, order='C')
+        for i in range(len_s):
+            ret[i] = np.mean(np.sort(distance_matrix[i, :])[1:1 + k])
+        random_sample = np.delete(random_sample, np.argmin(ret), axis=0)
+    return random_sample
 
 
-def optimised_lhs(
+# TODO: fix random seed behaviour + possible refactor
+def optimised_lhs(  # pylint: disable=too-many-arguments, too-many-locals
         n: int,
         d: int,
         iterations: int = 100,
         measure: str = 'euclidean',
-        criteria: typing.Union[str, callable] = 'maximin',
-        options: typing.Optional[dict] = None,
-        seed: typing.Optional[int] = None,
-        ):
+        criteria: Union[str, ta.LhsCriteria] = 'maximin',
+        options: Optional[Mapping[str, Any]] = None,
+        seed: Optional[int] = None,
+) -> np.ndarray:
     """Optimised Latin Hypercube Sample design.
 
     Pick a sample from a collection of latin hypercube designs maximising a
@@ -249,43 +251,32 @@ def optimised_lhs(
     set_seed(seed)
     if options is None:
         options = {}
-
-    # precompute slices and slice indices
     slices = np.linspace(0, 1, n+1)
-    l = slices[:n]
-    u = slices[1:]
+    lower = slices[:n]
+    upper = slices[1:]
     indices_list = np.arange(n)
     points = np.empty((n, d), order='C', dtype=np.float64)
-    s = np.empty((n, d), order='C', dtype=np.float64)
+    sample = np.empty((n, d), order='C', dtype=np.float64)
     tmp = -np.inf
-    for i in range(iterations):
-
-        # draw the uniform random numbers and set strata
-        urnd = np.random.random((n, d))
+    for _ in range(iterations):
+        urnd = np.random.random((n, d))  # pylint: disable=no-member
         for j in range(d):
-            points[:, j] = urnd[:, j] * (u-l) + l
-
-            # permute the points
+            points[:, j] = urnd[:, j] * (upper - lower) + lower
             index = np.random.permutation(indices_list)
-            s[:, j] = points[index, j]
-
-        # evaluate the criteria
-        delta = eval_criteria(s, measure, criteria, options)
-
-        # if the design is an improvement over the current best, keep it
+            sample[:, j] = points[index, j]
+        delta = eval_criteria(sample, measure, criteria, options)
         if delta > tmp:
             tmp = delta
-            ret = s.copy()
-
+            ret = sample.copy()  # is this copy necessary?
     return ret
 
 
 def eval_criteria(
         arr: np.ndarray,
         measure: str,
-        criteria: typing.Union[str, callable],
-        options: dict
-        ):
+        criteria: Union[str, ta.LhsCriteria],
+        options: Mapping[str, Any]
+) -> float:
     """ Evaluate LHS optimality criteria.
 
     Parameters
@@ -309,12 +300,18 @@ def eval_criteria(
     dist = cdist(arr, arr, metric=measure)
     dist_vector = dist[ix, jy]
 
-    if criteria in _CRITERIA:
-        return _CRITERIA[criteria](dist_vector, **options)
+    if isinstance(criteria, str):
+        if criteria in CRITERIA:
+            func = CRITERIA[criteria]
+            return func(dist_vector, **options)
 
-    elif hasattr(criteria, '__call__'):
-        return criteria(dist_vector, **options)
+    if hasattr(criteria, '__call__'):
+        # explicitly cast criteria as a function to satisfy type checker
+        func = cast(ta.LhsCriteria, criteria)
+        return func(dist_vector, **options)
 
-    else:
-        raise ValueError('Critiera must be one of {keys} or a callable function'\
-                         .format(keys = _CRITERIA.viewkeys()))
+    msg = (
+        'critiera must be either a function(ndarray) -> float'
+        ' or one of: {0}'.format(CRITERIA)
+    )
+    raise ValueError(msg)

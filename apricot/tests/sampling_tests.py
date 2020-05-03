@@ -3,7 +3,7 @@ Tests for sampling methods
 """
 
 import unittest
-import numpy as np
+import numpy as np  # type: ignore
 from apricot.core import sampling
 
 

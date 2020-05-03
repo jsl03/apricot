@@ -3,9 +3,9 @@ Tests for the gp_internal (C++) kernels
 """
 
 import unittest
-import numpy as np
+import numpy as np  # type: ignore
 import gp_utils
-from apricot.core import gp_internal
+from apricot.core import gp_internal  # pylint: disable=E0611
 
 
 class TestKernels(unittest.TestCase):

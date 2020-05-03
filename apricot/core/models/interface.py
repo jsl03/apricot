@@ -1,8 +1,8 @@
 # This file is licensed under Version 3.0 of the GNU General Public
 # License. See LICENSE for a text of the license.
 # ------------------------------------------------------------------------------
-import typing
-import numpy as np
+from typing import Optional, Union, Dict, Any, Tuple
+import numpy as np  # type: ignore
 from apricot.core import utils
 from apricot.core.models import build
 from apricot.core.models import parse
@@ -10,6 +10,7 @@ from apricot.core.models import initialisation
 from apricot.core.models import map as maxap  # avoid masking map
 from apricot.core.models import hmc
 from apricot.core.models import model_cache
+from apricot.core.models import type_aliases as ta
 
 
 class Interface(object):
@@ -19,37 +20,64 @@ class Interface(object):
     def __init__(
             self,
             kernel: str,
-            mean_function: typing.Optional[typing.Union[str, int]] = None,
-            noise: typing.Optional[typing.Union[str, float]] = None,
-            warping: typing.Optional[str] = None,
+            mean_function: Optional[ta.MeanFunction] = None,
+            noise: Optional[ta.NoiseModel] = None,
+            warping: Optional[str] = None,
     ) -> None:
         """ apricot interface to a pyStan GP model
 
         Parameters
         ----------
         kernel : str
-
+            The desired covariance kernel. One of:
+            * 'eq': Exponentiated quadratic.
+            * 'eq_flat': Exponentiated quadratic with flat (i.e., uniform)
+                hyperparameter priors. Used for debug purposes and model
+                tests.
+            * 'm52': Matern kernel with nu = 5/2.
+            * 'm32': Matern kernel with nu = 3/2.
+            * 'rq': Rational quadratic kernel.
         mean_function : str, optional
-
+            The desired mean function. One of:
+            * 0: Zero mean.
+            * 'zero': see above.
+            * 'linear: linear mean, i.e. mu = beta * x
         noise : str, optional
-
-        warping : str, optional
+            The desired noise model. If noise is a floating point number,
+            additive Gaussian (white) noise with standard deviation equivalent
+            to noise will be added to the leading diagonal of the sample
+            covariance matrix. If noise = 'infer', the standard deviation of
+            additive Gaussian noise will be inferred as a model hyperparameter.
+        warping : {None, False, str}, optional
+            If None or False, no input warping will be applied. If warping =
+            'linear' or warping = 'sigmoid', input warping using the Beta
+            distribution CDF will be applied as described in [1]_. Prior
+            distributions on the Beta distribution's parameters are used to
+            encode prior belief that the warping is approximately linear or
+            sigmoidal, respectively.
 
         Returns
         -------
         pyStan_interface : apricot.core.Interface instance
 
+        References
+        ----------
+        [1] Snoek, Jasper, et al. "Input warping for Bayesian optimization of
+        non-stationary functions." International Conference on Machine Learning.
+        2014.
         """
 
         self.kernel_type = parse.parse_kernel(kernel)
         self.mean_function_type = parse.parse_mean(mean_function)
         self.noise_type = parse.parse_noise(noise)
         self.warping = parse.parse_warping(warping)
-        warp = bool(warping)
 
-        kernel_part = build.make_kernel(self.kernel_type, warp)
+        kernel_part = build.make_kernel(self.kernel_type, self.warping)
         mean_part = build.make_mean(self.mean_function_type)
         noise_part = build.make_noise(self.noise_type)
+
+        if self.warping:
+            warp = True
 
         self.pystan_model = model_cache.load(
             kernel_part,
@@ -89,9 +117,9 @@ class Interface(object):
             x: np.ndarray,
             y: np.ndarray,
             jitter: float = 1e-10,
-            fit_options: typing.Optional[dict] = None,
-            seed: typing.Optional[int] = None
-    ) -> dict:
+            ls_options: Optional[ta.LsPriorOptions] = None,
+            seed: Optional[int] = None
+    ) -> ta.PyStanData:
         """ Construct the pystan 'data' dictionary
 
         Parameters
@@ -122,15 +150,15 @@ class Interface(object):
             x,
             y,
             jitter,
-            fit_options,
+            ls_options,
             seed=seed
         )
 
     def get_init(
             self,
-            init_method: typing.Optional[typing.Union[str, dict]],
-            stan_dict: dict
-    ) -> typing.Union[dict, str, int]:
+            init_method: ta.InitTypes,
+            stan_dict: ta.PyStanData
+    ) -> ta.InitTypes:
         """ Create dictionary of initial values for pyStan
 
         Parameters
@@ -157,7 +185,7 @@ class Interface(object):
 
         Notes
         -----
-        This is a wrapper for models.initialisation.get_init 
+        This is a wrapper for models.initialisation.get_init
         """
         return initialisation.get_init(self, init_method, stan_dict)
 
@@ -166,16 +194,16 @@ class Interface(object):
             x: np.ndarray,
             y: np.ndarray,
             jitter: float = 1e-10,
-            fit_options: typing.Optional[dict] = None,
+            ls_options: Optional[ta.LsPriorOptions] = None,
             samples: int = 2000,
             thin: int = 1,
             chains: int = 4,
             adapt_delta: float = 0.8,
             max_treedepth: int = 10,
-            seed: typing.Optional[int] = None,
+            seed: Optional[int] = None,
             permute: bool = True,
-            init_method: typing.Union[dict, str, int] = 'stable',
-    ) -> typing.Union[np.ndarray, dict]:
+            init_method: ta.InitTypes = 'stable',
+    ) -> Tuple[np.ndarray, Dict[str, Any]]:
         """ Sample model hyperparameters using Hamiltonian Monte-Carlo
 
         Parameters
@@ -230,7 +258,7 @@ class Interface(object):
             x,
             y,
             jitter,
-            fit_options,
+            ls_options,
             samples,
             thin,
             chains,
@@ -247,13 +275,13 @@ class Interface(object):
             x: np.ndarray,
             y: np.ndarray,
             jitter: float = 1e-10,
-            fit_options:  typing.Optional[dict] = None,
-            init_method: typing.Union[dict, str, int] = 'stable',
+            ls_options: Optional[ta.LsPriorOptions] = None,
+            init_method: ta.InitTypes = 'stable',
             algorithm: str = 'Newton',
             restarts: int = 10,
             max_iter: int = 250,
-            seed: typing.Optional[int] = None,
-    ) -> typing.Union[np.ndarray, dict]:
+            seed: Optional[int] = None,
+    ) -> Tuple[np.ndarray, Dict[str, Any]]:
         """ Identify model parameters using log-likelihood optimisation
 
         Parameters
@@ -308,7 +336,7 @@ class Interface(object):
             x,
             y,
             jitter,
-            fit_options,
+            ls_options,
             init_method,
             algorithm,
             restarts,

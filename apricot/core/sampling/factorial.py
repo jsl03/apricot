@@ -1,8 +1,8 @@
 # This file is licensed under Version 3.0 of the GNU General Public
 # License. See LICENSE for a text of the license.
 # ------------------------------------------------------------------------------
-import typing
-import numpy as np
+from typing import Optional
+import numpy as np  # type: ignore
 from apricot.core.logger import get_logger
 logger = get_logger()
 
@@ -10,8 +10,8 @@ logger = get_logger()
 def factorial(
         n: int,
         d: int,
-        seed: typing.Optional[int] = None,
-):
+        seed: Optional[int] = None,
+) -> np.ndarray:
     """ Factorial sample design
 
     Factorial will round down the requested number of samples to the nearest
@@ -35,8 +35,14 @@ def factorial(
     """
     n_valid, next_largest = _power_d_less_n(n, d)
     if n != next_largest:
-        logger.info('Next largest factorial sample size in {0} dimensions is {1}.'.format(d, next_largest))
-        logger.warning('Factorial dimension rounded down to {0}. Sample size is {1}.'.format(n_valid, n_valid**d))
+        logger.info(
+            'Next largest factorial sample size in {0} dimensions is {1}.'
+            .format(d, next_largest)
+        )
+        logger.warning(
+            'Factorial dimension rounded down to {0}. Sample size is {1}.'
+            .format(n_valid, n_valid**d)
+        )
     else:
         n_valid += 1
     vecs = (np.linspace(0, 1, n_valid) for _ in range(d))

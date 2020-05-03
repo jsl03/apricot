@@ -1,17 +1,22 @@
 # This file is licensed under Version 3.0 of the GNU General Public
 # License. See LICENSE for a text of the license.
 # ------------------------------------------------------------------------------
-import typing
+from typing import List, Optional, Dict, Any
 import re
-import numpy as np
+import numpy as np  # type: ignore
 from apricot.core import utils
+
+
+# for satisfying forward type checking
+if False:
+    import apricot
 
 
 def slice_in_order(
         array: np.ndarray,
         target: str,
-        colnames: typing.List[str],
-) -> typing.Optional[np.ndarray]:
+        colnames: List[str],
+) -> Optional[np.ndarray]:
     """ Slice target columns of array corresponding to colnames.
 
     Automatically strips brackets from colnames such that (for example) 'ls[0],
@@ -40,7 +45,7 @@ def param_to_2dfarray(arr: np.ndarray) -> np.ndarray:
 def hmc_glue(
         interface: 'apricot.core.models.interface.Interface',
         samples: np.ndarray,
-        info: dict,
+        info: Dict[str, Any],
 ) -> dict:
     """ Formatting for hyperparameters obtained via Stan using HMC.
 
@@ -61,7 +66,6 @@ def hmc_glue(
     hyperparameters : dict
         dictionary of named hyperparameter samples.
     """
-
     required = (
         interface.theta +
         interface.beta +
@@ -89,7 +93,7 @@ def hmc_glue(
 @utils.maybe
 def map_glue(
         interface: 'apricot.core.models.interface.Interface',
-        opt_result: typing.Dict[str, typing.Any],
+        opt_result: Dict[str, Any],
         info: dict,
 ) -> dict:
     """ Formatting for hyperparameters obtained via Stan using map.

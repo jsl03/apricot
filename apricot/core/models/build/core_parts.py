@@ -3,7 +3,7 @@
 # ------------------------------------------------------------------------------
 from apricot.core.models.build.components import StanModelPart
 
-_CORE = {
+CORE = {
     'name': None,
     'data': [
         'int<lower=1> n;',
@@ -20,5 +20,6 @@ _CORE = {
 }
 
 
-def _get_core():
-    return StanModelPart(**_CORE)
+def get_core():
+    """ Return the core parts of the model code. """
+    return StanModelPart(**CORE)
