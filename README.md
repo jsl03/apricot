@@ -68,6 +68,8 @@ It can be installed using `pip3` from inside the apricot source directory:
 
 ## Acknowledgements
 
+### Code:
+
 This package makes use of one or more pieces of code from the following authors:
 
 * apricot's `setup.py` features code directly from [pybind/python\_example](https://github.com/pybind/python_example).
@@ -75,7 +77,17 @@ This package makes use of one or more pieces of code from the following authors:
 * The `sobol` submodule uses code derived from [naught101/sobol\_seq](https://github.com/naught101/sobol_seq), in turn
 derived from [Sobol](https://people.sc.fsu.edu/~jburkardt/py_src/sobol/sobol.html) by John Burkardt and Corrado Chisari.
 
+### Important References:
+
 * The lengthscale parameter prior distributions used inside the `priors` module closely follow considerations outlined by [Michael Betancourt](https://betanalpha.github.io/) in his three-part series ([part 1](https://betanalpha.github.io/assets/case_studies/gp_part1/part1.html), [part 2](https://betanalpha.github.io/assets/case_studies/gp_part2/part2.html), [part 3](https://betanalpha.github.io/assets/case_studies/gp_part3/part3.html)) on robust GP regression.
+
+* **Expected Improvement**: Mockus J, Tiesis V, Zilinskas A. The application of Bayesian methods for seeking the extremum. Towards global optimization. 1978 Dec;2(117-129):2.
+
+* **Upper Confidence Bound**: Srinivas N, Krause A, Kakade SM, Seeger M. Gaussian process optimization in the bandit setting: No regret and experimental design. arXiv preprint arXiv:0912.3995. 2009 Dec 21.
+
+* **Input Warping For Non-Stationary GP Regression**: Snoek J, Swersky K, Zemel R, Adams R. Input warping for Bayesian optimization of non-stationary functions. InInternational Conference on Machine Learning 2014 Jan 27 (pp. 1674-1682).
+
+* **Quasi-Random Sampling with Sobol Sequences**: Sobol IM. Uniformly distributed sequences with an additional uniform property. USSR Computational Mathematics and Mathematical Physics. 1976 Jan 1;16(5):236-42.
 
 ## Similar and Related Packages
 
