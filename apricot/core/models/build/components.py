@@ -9,10 +9,13 @@ from apricot.core.models.build import filenames
 ModelCode = Optional[Union[List[str], str]]
 
 
-# TODO tidy this up; some options are deprecated (is args still used?)
+# TODO some options are deprecated (is args still used?)
 class StanModelPart:
-
-    def __init__(
+    """ Base class for the Stan model "parts" which are combined to form a
+    pyStan model interface.
+    """
+    # pylint: disable=too-many-instance-attributes
+    def __init__(  # pylint: disable=too-many-arguments
             self,
             name: Optional[str] = None,
             functions: ModelCode = None,
@@ -27,8 +30,6 @@ class StanModelPart:
     ):
 
         self._name = name
-
-        # avoiding using mutable defaults
         functions = none_to_list(functions)
         data = none_to_list(data)
         transformed_data = none_to_list(transformed_data)
@@ -54,42 +55,60 @@ class StanModelPart:
 
     @property
     def filename_component(self):
+        """ This part's contribution to the unique model filname."""
         return self._name
 
     @property
     def functions(self):
+        """ Contribution to Stan model "functions" block."""
         return self._functions
 
     @property
     def data(self):
+        """ Contribution to Stan model "data" block."""
         return self._data
 
     @property
     def transdata(self):
+        """ Contribution to Stan model "transformed data" block."""
         return self._transdata
 
     @property
     def params(self):
+        """ Contribution to Stan model "parameters" block."""
         return self._params
 
     @property
     def transparams(self):
+        """ Contribution to Stan model "transformed parameters" block."""
         return self._transparams
 
     @property
     def model(self):
+        """Contribution to Stan model "model" block."""
         return self._model
 
     @property
     def args(self):
+        """ Contribution to the arguments required to run the (fit) model. For
+        example, a linear mean requires beta to be present when computing the
+        posterior (predictive) distribution.
+        """
         return self._args
 
     @property
     def to_sample(self):
+        """ Contribution to the parameters to be sampled by the model. Passed
+        to pystan as the "pars" variable when invoking pystan.StanModel
+        methods.
+        """
         return self._to_sample
 
     @property
     def data_priors(self):
+        """ Contribution to the entries required in the "data" dictionary
+        required by the model.
+        """
         return self._data_priors
 
     def __iter__(self):
@@ -108,8 +127,9 @@ class StanModelPart:
 
 
 class StanModelKernel(StanModelPart):
-
-    def __init__(
+    """ Stan model kernels. """
+    # pylint: disable=too-many-instance-attributes
+    def __init__(  # pylint: disable=too-many-arguments, too-many-locals
             self,
             name: Optional[str] = None,
             functions: ModelCode = None,
@@ -146,21 +166,21 @@ class StanModelKernel(StanModelPart):
 
 
 class StanModelMeanFunction(StanModelPart):
-
+    """ Stan model mean functions. """
     @property
     def filename_component(self):
         return filenames.mean_part_filename(self._name)
 
 
 class StanModelNoise(StanModelPart):
-
+    """ Stan model noise models. """
     @property
     def filename_component(self):
         return filenames.noise_part_filename(self._name)
 
 
-def none_to_list(x: Optional[Any]) -> Any:
-    """ If x is None, turn it into an empty list. """
-    if x is None:
+def none_to_list(arg: Optional[Any]) -> Any:
+    """ If arg is None, turn it into an empty list. """
+    if arg is None:
         return []
-    return x
+    return arg

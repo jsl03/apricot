@@ -1,26 +1,21 @@
-# This file is licensed under Version 3.0 of the GNU General Public
-# License. See LICENSE for a text of the license.
-# ------------------------------------------------------------------------------
-
 """
-This module is a stripped down and slightly modified version of the
-"sobol_seq" package.
+This module is a stripped down and slightly modified version of an old version
+of the "sobol_seq" package. All credits go to the original code, which is
+available online at https://github.com/naught101/sobol_seq.
 
-Please see the original code, which is available at:
-https://github.com/naught101/sobol_seq
+The sobol_seq package is in turn based on original contributions as follows:
+    - Original FORTRAN77 version of i4_sobol by Bennett Fox.
+    - MATLAB version by John Burkardt.
+    - PYTHON version by Corrado Chisari
+    - Original Python version of is_prime by Corrado Chisari
+    - Original MATLAB versions of other functions by John Burkardt.
+    - PYTHON versions by Corrado Chisari
+    - Original code available at:
+        http://people.sc.fsu.edu/~jburkardt/py_src/sobol/sobol.html
 
-sobol_seq is in turn based on original contributions as follows:
-
-Original FORTRAN77 version of i4_sobol by Bennett Fox.
-MATLAB version by John Burkardt.
-PYTHON version by Corrado Chisari
-Original Python version of is_prime by Corrado Chisari
-Original MATLAB versions of other functions by John Burkardt.
-PYTHON versions by Corrado Chisari
-Original code is available at http://people.sc.fsu.edu/~jburkardt/py_src/sobol/sobol.html
+This file is licensed under Version 3.0 of the GNU General Public
+License. See LICENSE for a text of the license.
 """
-
-from __future__ import division  # deprecated; python2 compatibility not needed
 from typing import Optional
 import numpy as np  # type: ignore
 import six
@@ -28,8 +23,8 @@ from apricot.core.utils import set_seed
 
 
 def sobol_scatter(
-        n: int,
-        d: int,
+        sample_size: int,
+        dimensions: int,
         seed: Optional[int] = None,
         generator_seed: int = 1,
         skip: int = 0,
@@ -43,22 +38,24 @@ def sobol_scatter(
 
     Parameters
     ----------
-    n : int
+    sample_size: int
         The number of random vectors to retrieve.
-    d : int
+    dimensions: int
         The dimension of the random vectors
-    seed : {None, int32}
+    seed: {None, int32}
         Seed for numpy's random state. If None, an arbitrary seed will be used.
         Default = None.
     generator_seed : int
         Seed for the Sobol sequence generator. Default = 1.
-    skip : int
+    skip: int
         Skip every this number of generated points. Default = 0.
 
     Returns
     -------
     samples : ndarray
-        (n,d) array consisting of n quasi-random vectors in d dimensions.
+        (sample_size, dimensions) array consisting of the requested number of
+        quasi-random vectors scaled between [0, 1] in the requested number of
+        dimensions.
 
     Notes
     -----
@@ -81,21 +78,26 @@ def sobol_scatter(
     i4_sobol2 : Sobol sequence generator.
 
     """
+    # pylint: disable=no-member
     set_seed(seed)
-    r = np.empty((n, d))
-    seq_generator = i4_sobol2(d, generator_seed=generator_seed, skip=skip)
-    for j in range(n):
-        r[j, :] = six.next(seq_generator)
-    r += np.random.random(size=r.shape)
-    while((r < 0).any() | (r > 1).any()):
-        r[r > 1] -= 1
-        r[r < 0] += 1
-    return r
+    sample = np.empty((sample_size, dimensions), dtype=np.float64)
+    seq_generator = i4_sobol2(
+        dimensions,
+        generator_seed=generator_seed,
+        skip=skip
+    )
+    for j in range(sample_size):
+        sample[j, :] = six.next(seq_generator)
+    sample += np.random.random(size=sample.shape)
+    while (sample < 0).any() | (sample > 1).any():
+        sample[sample > 1] -= 1
+        sample[sample < 0] += 1
+    return sample
 
 
 def sobol(
-        n: int,
-        d: int,
+        sample_size: int,
+        dimensions: int,
         seed: Optional[int] = None,
         generator_seed: int = 1,
         skip: int = 0,
@@ -110,23 +112,24 @@ def sobol(
 
     Parameters
     ----------
-    n : int
+    sample_size: int
         The number of random vectors to retrieve.
-    d : int
+    dimensions: int
         The dimension of the random vectors
-    seed : {None, int32}
+    seed: {None, int32}
         Seed for numpy's random state. If None, an arbitrary seed will be used.
-        Note that this algorithm is deterministic, so seed has no effect.
         Default = None.
     generator_seed : int
-        Seed for the Sobol sequence generator. Default = 1
-    skip : int
+        Seed for the Sobol sequence generator. Default = 1.
+    skip: int
         Skip every this number of generated points. Default = 0.
 
     Returns
     -------
     samples : ndarray
-        (n,d) array consisting of n quasi-random vectors in d dimensions.
+        (sample_size, dimensions) array consisting of the requested number of
+        quasi-random vectors scaled between [0, 1] in the requested number of
+        dimensions.
 
     Notes
     -----
@@ -149,15 +152,20 @@ def sobol(
     i4_sobol2 : Sobol sequence generator.
     """
     set_seed(seed)
-    r = np.empty((n, d))
-    seq_generator = i4_sobol2(d, generator_seed=generator_seed, skip=skip)
-    for j in range(n):
-        r[j, :] = six.next(seq_generator)
-    return r
+    sample = np.empty((sample_size, dimensions), dtype=np.float64)
+    seq_generator = i4_sobol2(
+        dimensions,
+        generator_seed=generator_seed,
+        skip=skip
+    )
+    for j in range(sample_size):
+        sample[j, :] = six.next(seq_generator)
+    return sample
 
 
 def i4_bit_hi1(n: int):
     """ Return the position of the high 1 bit base 2 in an integer. """
+    # pylint: disable=invalid-name
     i = np.floor(n)
     bit = 0
     while i > 0:
@@ -168,6 +176,7 @@ def i4_bit_hi1(n: int):
 
 def i4_bit_lo0(n: int):
     """ Return the position of the low 0 bit base 2 in an integer. """
+    # pylint: disable=invalid-name
     bit = 1
     i = np.floor(n)
     while i != 2 * (i // 2):
@@ -193,12 +202,13 @@ def init_v():
     Rather than declaring it as a global variable, it is instanced once inside
     the generator.
     """
+    # pylint: disable=invalid-name
     v = np.zeros((DIM_MAX, LOG_MAX))
     v[0:40, 0] = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                            1, 1, 1, 1, 1, 1])
 
-    v[2:40, 1] = np.array([1, 3, 1, 3, 1, 3, 3, 1, 3, 1,  3, 1, 3, 1, 1, 3, 1,
+    v[2:40, 1] = np.array([1, 3, 1, 3, 1, 3, 3, 1, 3, 1, 3, 1, 3, 1, 1, 3, 1,
                            3, 1, 3, 1, 3, 3, 1, 3, 1, 3, 1, 3, 1, 1, 3, 1, 3,
                            1, 3, 1, 3])
 
@@ -212,9 +222,9 @@ def init_v():
 
     v[7:40, 4] = np.array([9, 3, 27, 15, 29, 21, 23, 19, 11, 25, 7, 13, 17, 1,
                            25, 29, 3, 31, 11, 5, 23, 27, 19, 21, 5, 1, 17, 13,
-                           7,  15, 9,  31, 9])
+                           7, 15, 9, 31, 9])
 
-    v[13:40, 5] = np.array([37, 33, 7,  5, 11, 39, 63, 27, 17, 15, 23, 29, 3,
+    v[13:40, 5] = np.array([37, 33, 7, 5, 11, 39, 63, 27, 17, 15, 23, 29, 3,
                             21, 13, 31, 25, 9, 49, 33, 19, 29, 11, 19, 27, 15,
                             25])
 
@@ -230,6 +240,7 @@ def init_v():
 
 def prime_ge(n: int):
     """ Return the smallest prime greater than or equal to n. """
+    # pylint: disable=invalid-name
     p = max(np.ceil(n), 2)
     while not is_prime(p):
         p += 1
@@ -241,9 +252,10 @@ def is_prime(n: int) -> bool:
 
     Original version by Corrado Chisari.
     """
+    # pylint: disable=invalid-name
     if n != int(n) or n < 2:
         return False
-    if n == 2 or n == 3:
+    if n in (2, 3):
         return True
     if n % 2 == 0 or n % 3 == 0:
         return False
@@ -295,16 +307,21 @@ def i4_sobol2(
     (in Russian),
     Preprint IPM Akad. Nauk SSSR,
     Number 40, Moscow 1976.
+
+    Notes
+    -----
+    Needs tidying up. Features a bunch of pylint/flake8 warning suppressions
+    that need fixing. Variable "l" in original implementation prefixed "_" to
+    silence "bad variable name" warnings.
     """
+    # pylint: disable=invalid-name, line-too-long
     generator_seed_save = -1
     generator_seed = int(np.floor(generator_seed))
     if generator_seed < 0:
         generator_seed = 0
-
     v = init_v()
     #  Initialize the remaining rows of V.
     for i in range(2, dim_num + 1):
-
         # The bits of the integer POLY(I) gives the form of polynomial I.
         # Find the degree of polynomial I from binary encoding.
         j = POLY[i - 1]
@@ -313,7 +330,6 @@ def i4_sobol2(
         while j > 0:
             j //= 2
             m += 1
-
         # Expand this bit pattern to separate components of the logical
         # array INCLUD.
         j = POLY[i - 1]
@@ -322,59 +338,54 @@ def i4_sobol2(
             j2 = j // 2
             includ[k - 1] = (j != 2 * j2)
             j = j2
-
         # Calculate the remaining elements of row I as explained in
         # Bratley and Fox, section 2.
         for j in range(m + 1, MAXCOL + 1):
             newv = v[i - 1, j - m - 1]
-            l = 1
+            _l = 1
             for k in range(1, m + 1):
-                l *= 2
+                _l *= 2
                 if includ[k - 1]:
                     newv = np.bitwise_xor(int(newv),
-                                          int(l * v[i - 1, j - k - 1]))
+                                          int(_l * v[i - 1, j - k - 1]))
             v[i - 1, j - 1] = newv
-
     #  Multiply columns of V by appropriate power of 2.
-    l = 1
+    _l = 1
     for j in range(MAXCOL - 1, 0, -1):
-        l *= 2
-        v[0:dim_num, j - 1] = v[0:dim_num, j - 1] * l
-
+        _l *= 2
+        v[0:dim_num, j - 1] = v[0:dim_num, j - 1] * _l
     # RECIPD is 1/(common denominator of the elements in V).
-    recipd = 1.0 / (2 * l)
+    recipd = 1.0 / (2 * _l)
     lastq = np.zeros(dim_num)
     keep_going = True
     while keep_going:
-        l = 1
+        _l = 1
         if generator_seed == 0:
             lastq = np.zeros(dim_num)
         elif generator_seed == generator_seed_save + 1:
-            l = i4_bit_lo0(generator_seed)
+            _l = i4_bit_lo0(generator_seed)
         elif generator_seed <= generator_seed_save:
             generator_seed_save = 0
             lastq = np.zeros(dim_num)
-            for generator_seed_temp in range(int(generator_seed_save), int(generator_seed)):
-                l = i4_bit_lo0(generator_seed_temp)
+            for generator_seed_temp in range(int(generator_seed_save), int(generator_seed)):  # noqa: E501
+                _l = i4_bit_lo0(generator_seed_temp)
                 for i in range(1, dim_num + 1):
                     lastq[i - 1] = np.bitwise_xor(
-                        int(lastq[i - 1]), int(v[i - 1, l - 1]))
-            l = i4_bit_lo0(generator_seed)
+                        int(lastq[i - 1]), int(v[i - 1, _l - 1]))
+            _l = i4_bit_lo0(generator_seed)
         elif generator_seed_save + 1 < generator_seed:
-            for generator_seed_temp in range(int(generator_seed_save + 1), int(generator_seed)):
-                l = i4_bit_lo0(generator_seed_temp)
+            for generator_seed_temp in range(int(generator_seed_save + 1), int(generator_seed)):  # noqa: E501
+                _l = i4_bit_lo0(generator_seed_temp)
                 for i in range(1, dim_num + 1):
-                    lastq[i - 1] = np.bitwise_xor(int(lastq[i - 1]),
-                                                  int(v[i - 1, l - 1]))
-            l = i4_bit_lo0(generator_seed)
-        if MAXCOL < l:
+                    lastq[i - 1] = np.bitwise_xor(int(lastq[i - 1]), int(v[i - 1, _l - 1]))  # noqa: E501
+            _l = i4_bit_lo0(generator_seed)
+        if MAXCOL < _l:
             keep_going = False
         quasi = np.zeros(dim_num)
         for i in range(1, dim_num + 1):
             quasi[i - 1] = lastq[i - 1] * recipd
-            lastq[i - 1] = np.bitwise_xor(int(lastq[i - 1]), int(v[i - 1, l - 1]))
-        
-        # overwite generator_seed_save with current generator_seed 
+            lastq[i - 1] = np.bitwise_xor(int(lastq[i - 1]), int(v[i - 1, _l - 1]))  # noqa: E501
+        # overwite generator_seed_save with current generator_seed
         generator_seed_save = generator_seed
         yield quasi
         generator_seed += (1 + skip)

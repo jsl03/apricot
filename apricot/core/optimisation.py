@@ -10,9 +10,9 @@ from apricot.core.sampling import sample_hypercube
 
 
 def optimise(  # pylint: disable=too-many-arguments
-        f: ta.ObjectiveFunction,
-        f_jac: ta.ObjectiveFunctionJac,
-        d: int,
+        func: ta.ObjectiveFunction,
+        func_and_jac: ta.ObjectiveFunctionJac,
+        index_dimension: int,
         x0: Optional[np.ndarray] = None,
         grid: Optional[np.ndarray] = None,
         grid_size: Optional[int] = None,
@@ -59,14 +59,20 @@ def optimise(  # pylint: disable=too-many-arguments
     """
     if x0 is None:
         x0 = grid_search(
-            f, d, grid, grid_size, grid_method, grid_options, seed
+            func,
+            index_dimension,
+            grid,
+            grid_size,
+            grid_method,
+            grid_options,
+            seed
         )
     result = minimize(
-        fun=f_jac,
+        fun=func_and_jac,
         x0=x0,
         jac=True,
         method='SLSQP',
-        bounds=[(0, 1) for _ in range(d)]
+        bounds=[(0, 1)] * index_dimension
     )
     if result['success']:
         ret = {
@@ -78,9 +84,9 @@ def optimise(  # pylint: disable=too-many-arguments
     return ret
 
 
-def grid_search(
-        f: ta.ObjectiveFunction,
-        d: int,
+def grid_search(  # pylint: disable=too-many-arguments
+        func: ta.ObjectiveFunction,
+        index_dimension: int,
         grid: Optional[np.ndarray] = None,
         grid_size: Optional[int] = None,
         grid_method: str = 'lhs',
@@ -94,9 +100,9 @@ def grid_search(
 
     Parameters
     ----------
-    f : callable
+    func : callable
         The objective function to minimise.
-    d : int
+    index_dimension : int
         The dimension of the space on which the objective function is defined.
     grid : {ndarray, None}, optional
         The grid on which to perform the search. If None, a grid will be
@@ -131,24 +137,24 @@ def grid_search(
     apricot.core.sampling.sample_hypercube
     """
     xgrid = _get_grid(
-        d,
+        index_dimension,
         grid=grid,
         grid_size=grid_size,
         grid_method=grid_method,
         grid_options=grid_options,
         seed=seed
     )
-    fxgrid = f(xgrid)
+    fxgrid = func(xgrid)
     return xgrid[fxgrid.argmin(), :]
 
 
-def _check_grid(grid: np.ndarray, d: int):
+def _check_grid(grid: np.ndarray, index_dimension: int):
     """ Check / format a grid of points. """
     xgrid = np.atleast_1d(grid)
-    if d == 1:
+    if index_dimension == 1:
         xgrid = _check_grid_shape_1d(xgrid)
     else:
-        xgrid = _check_grid_shape_nd(xgrid, d)
+        xgrid = _check_grid_shape_nd(xgrid, index_dimension)
     return _check_bounds(xgrid)
 
 
@@ -203,49 +209,56 @@ def _check_grid_shape_1d(xgrid: np.ndarray) -> np.ndarray:
     raise ValueError(msg)
 
 
-def _check_grid_shape_nd(xgrid: np.ndarray, d: int) -> np.ndarray:
+def _check_grid_shape_nd(
+        xgrid: np.ndarray,
+        index_dimension: int
+) -> np.ndarray:
     """Check the shape of a d-dimensional grid.
 
     Parameters
     ----------
     xgrid : ndarray
         (n, d_grid) grid of points to assess.
-    d : int
+    index_dimension : int
         The dimension the grid should be in axis 1.
 
     Returns
     -------
     xgrid : ndarray
-        (n, d) array of F-ordered points.
+        (n, index_dimension) array of F-ordered points.
 
     Raises
     ------
     ValueError
-        If d_grid != d
-        If np.squeeze(xgrid) > 2
+        If either d_grid != index_dimension or np.squeeze(xgrid) > 2.
     """
     if xgrid.ndim != 2:  # squeeze grid if it has over 2 dimensions
-        xgs = xgrid.squeeze()
-        if xgs.ndim == 1:
-            if xgs.shape[0] == d:
-                return xgs.reshape(1, -1, order='F')
-            msg = 'supplied grid must be of shape (n,{0})'.format(d)
+        grid_squeezed = xgrid.squeeze()
+        if grid_squeezed.ndim == 1:
+            if grid_squeezed.shape[0] == index_dimension:
+                return grid_squeezed.reshape(1, -1, order='F')
+            msg = 'supplied grid must be of shape (n,{0})'.format(
+                index_dimension
+            )
             raise ValueError(msg)
-        if xgs.ndim == 2:
-            return _check_grid_shape_nd(xgs, d)
+        if grid_squeezed.ndim == 2:
+            return _check_grid_shape_nd(grid_squeezed, index_dimension)
         msg = 'supplied grid may have at most 2 non-singleton dimensions.'
         raise ValueError(msg)
-    return _check_grid_shape_nd_internal(xgrid, d)
+    return _check_grid_shape_nd_internal(xgrid, index_dimension)
 
 
-def _check_grid_shape_nd_internal(xgrid: np.ndarray, d: int) -> np.ndarray:
+def _check_grid_shape_nd_internal(
+        xgrid: np.ndarray,
+        index_dimension: int
+) -> np.ndarray:
     """ Check the shape of a 2D grid in axis 1 matches d
 
     Parameters
     ----------
     xgrid : ndarray
         (n, d_grid) array
-    d : int
+    index_dimension : int
         The dimension the grid should be in axis 1.
 
     Returns
@@ -258,14 +271,14 @@ def _check_grid_shape_nd_internal(xgrid: np.ndarray, d: int) -> np.ndarray:
     ValueError
         If d_grid != d.
     """
-    if xgrid.shape[1] == d:
+    if xgrid.shape[1] == index_dimension:
         return force_f_array(xgrid)
-    msg = 'supplied grid must be of shape (n,{0})'.format(d)
+    msg = 'supplied grid must be of shape (n,{0})'.format(index_dimension)
     raise ValueError(msg)
 
 
 def _get_grid(  # pylint: disable=too-many-arguments
-        d: int,
+        index_dimension: int,
         grid: Optional[np.ndarray] = None,
         grid_size: Optional[int] = None,
         grid_method: str = 'lhs',
@@ -276,37 +289,42 @@ def _get_grid(  # pylint: disable=too-many-arguments
 
     Parameters
     ----------
-    d : int
+    index_dimension: int
         Number of grid dimensions.
-    grid : ndarray, optional
+    grid: ndarray, optional
         Pre-generated grid of points. If absent, a grid of size
         grid_size will be generated using grid_method. Default = None.
-    grid_size : int, optional
+    grid_size: int, optional
         If grid is None, generate a grid of size (grid_size, d) using
         grid_method. Default = 100 * d. Ignored if grid != None.
-    grid_method : str, optional
+    grid_method: str, optional
         If grid is None, generate a grid of size (grid_size, d) using
         grid_method. Default = 'lhs'. Ignored if grid != None.
-    grid_options : dict, optional
+    grid_options: dict, optional
         Optional extra arguments to pass to grid_method. Default = None.
         Ignored if grid != None.
-    seed : {int32, None} optional
+    seed: {int32, None} optional
         Random seed. Default = None.
 
     Returns
     -------
-    grid : ndarray
+    grid: ndarray
         (grid_size, d) array of points.
 
     Raises
     ------
     ValueError
-        If grid has more than 2 non-singleton dimensions.
-        If the dimensions of grid are not consistent with d.
+        If either the grid has more than 2 non-singleton dimensions or if the
+        dimensions of grid are not consistent with the index dimension.
     """
     if grid is None:
         if grid_size is None:
-            grid_size = 100*d
-        return sample_hypercube(grid_size, d, method=grid_method, seed=seed,
-                                options=grid_options)
-    return _check_grid(grid, d)
+            grid_size = 100 * index_dimension
+        return sample_hypercube(
+            grid_size,
+            index_dimension,
+            method=grid_method,
+            seed=seed,
+            options=grid_options
+        )
+    return _check_grid(grid, index_dimension)

@@ -3,18 +3,16 @@
 # ------------------------------------------------------------------------------
 from typing import Optional, Mapping, Any, Callable
 import numpy as np  # type: ignore
-from apricot.core.models import type_aliases as ta
 from apricot.core.sampling.sobol import sobol
 from apricot.core.sampling.sobol import sobol_scatter
 from apricot.core.sampling.lhs import lhs
 from apricot.core.sampling.lhs import optimised_lhs
 from apricot.core.sampling.lhs import mdurs
 from apricot.core.sampling.factorial import factorial
-from apricot.core.utils import force_f_array
 from apricot.core.utils import set_seed
 
 
-def urandom(n: int, d: int, seed: Optional[int] = None):
+def urandom(sample_size: int, dimensions: int, seed: Optional[int] = None):
     """ Uniform random sample.
 
     Parameters
@@ -30,8 +28,9 @@ def urandom(n: int, d: int, seed: Optional[int] = None):
         (n, d) array of n random d-dimensional vectors drawn uniformly at
         random.
     """
+    # pylint: disable=no-member
     set_seed(seed)
-    return np.random.random((n, d))  # pylint: disable=no-member
+    return np.random.random((sample_size, dimensions))
 
 
 # TODO strengthen type of methods here; all accept two ints as the first
@@ -48,21 +47,21 @@ METHODS: Mapping[str, Callable] = {
 
 
 def sample_hypercube(
-        n: int,
-        d: int,
+        sample_size: int,
+        dimensions: int,
         method: str,
         seed: Optional[int] = None,
         options: Optional[Mapping[str, Any]] = None,
-):
+) -> np.ndarray:
     """ Unified interface to obtaining uniform random variables on [0,1]^d.
 
     Generate n d-dimensional vectors using the method 'method'.
 
     Parameters
     ----------
-    n : int
+    sample_size : int
         The number of random variables to draw.
-    d : int
+    dimensions : int
         The dimension of the random variables to draw.
     method : {'urandom', 'lhs', 'olhs', 'mdurs', 'sobol', 'randomised_sobol'}
         String matching one of the following available methods:
@@ -103,7 +102,8 @@ def sample_hypercube(
     Returns
     -------
     urvs : ndarray
-        (n,d) array of independent uniform random variables on [0,1]
+        (sample_size, dimensions) array of independent uniform random variables
+        scaled between 0 and 1.
 
     References
     ----------
@@ -123,8 +123,7 @@ def sample_hypercube(
     if options is None:
         options = {}
     try:
-        sample_method = METHODS[method]
+        return METHODS[method](sample_size, dimensions, seed=seed, **options)
     except KeyError:
         msg = 'method must be one of {0}.'.format(METHODS.keys())
         raise ValueError(msg)
-    return force_f_array(sample_method(n, d, seed=seed, **options))

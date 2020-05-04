@@ -49,6 +49,20 @@ def load(
         noise_part: NoisePart,
         warp: bool,
 ) -> pystan.StanModel:
+    """ Load model with requested components.
+
+    Parameters
+    ----------
+    kernel_part: KernelPart
+    mean_part: MeanPart
+    noise_part: NoisePart
+    warp: bool
+
+    Returns
+    -------
+    StanModel: pystan.StanModel
+        Requested (compiled) pystan model.
+    """
     filename = get_filename(kernel_part, mean_part, noise_part, warp)
     if os.path.isfile(filename):
         return load_from_pickle(filename)
@@ -61,6 +75,19 @@ def get_filename(
         noise_part: NoisePart,
         warp: bool,
 ) -> str:
+    """ Create model filename.
+
+    Parameters
+    ----------
+    kernel_part: KernelPart
+    mean_part: MeanPart
+    noise_part: NoisePart
+    warp: bool
+
+    Returns
+    -------
+    fname: str
+    """
     fname = '_'.join([
         kernel_part.filename_component,
         mean_part.filename_component,
@@ -73,7 +100,18 @@ def get_filename(
 
 @memo
 def load_from_pickle(filename: str) -> pystan.StanModel:
-    """Load a permanently cached pystan model """
+    """Load a permanently cached pystan model.
+
+    Parameters
+    ----------
+    filename: str
+        Filename of the pickled model to be loaded.
+
+    Returns
+    -------
+    pystan_model: pystan.StanModel
+        The requested model.
+    """
     LOGGER.debug('Loading Stan model: %s', filename)
     return pickle.load(open(filename, 'rb'))
 
@@ -84,7 +122,20 @@ def compile_model(
         noise_part: NoisePart,
         filename: str,
 ) -> pystan.StanModel:
-    """ Assemble model code from parts, compile it, and save the pickle. """
+    """ Assemble model code from parts, compile it, and save the pickle.
+
+    Parameters
+    ----------
+    kernel_part: KernelPart
+    mean_part: MeanPart
+    noise_part: NoisePart
+    filename: str
+
+    Returns
+    -------
+    pystan_model: pystan.StanModel
+
+    """
     to_cache = prompt_cache()
     model_code = build.assmeble_model_code(kernel_part, mean_part, noise_part)
     compiled_model = pystan.StanModel(model_code=model_code)

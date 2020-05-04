@@ -8,8 +8,8 @@ logger = get_logger()
 
 
 def factorial(
-        n: int,
-        d: int,
+        sample_size: int,
+        dimensions: int,
         seed: Optional[int] = None,
 ) -> np.ndarray:
     """ Factorial sample design
@@ -33,30 +33,31 @@ def factorial(
     samples : ndarray
         (n_prime, d) array of samples
     """
-    n_valid, next_largest = _power_d_less_n(n, d)
-    if n != next_largest:
+    n_valid, next_largest = _power_d_less_n(sample_size, dimensions)
+    if sample_size != next_largest:
         logger.info(
-            'Next largest factorial sample size in {0} dimensions is {1}.'
-            .format(d, next_largest)
+            'Next largest factorial sample size in %(d)s dimensions is %(n)s.',
+            {'d': dimensions, 'n': next_largest}
         )
         logger.warning(
-            'Factorial dimension rounded down to {0}. Sample size is {1}.'
-            .format(n_valid, n_valid**d)
+            'Factorial dimension rounded down to %(d)s. Sample size is %(n)s.',
+            {'d': n_valid, 'n': n_valid**dimensions}
         )
     else:
         n_valid += 1
-    vecs = (np.linspace(0, 1, n_valid) for _ in range(d))
+    vecs = (np.linspace(0, 1, n_valid) for _ in range(dimensions))
     return cartesian(*vecs)
 
 
 def cartesian(*args: np.ndarray):
     """Cartesian product of a sequence of arrays"""
-    d = len(args)
-    return np.array(np.meshgrid(*args)).T.reshape(-1, d, order='C')
+    n_args = len(args)
+    return np.array(np.meshgrid(*args)).T.reshape(-1, n_args, order='C')
 
 
 def _power_d_less_n(n: int, d: int):
     """ find a such that d**a < n"""
+    # pylint: disable= invalid-name
     a = 1
     while True:
         if a ** d < n:

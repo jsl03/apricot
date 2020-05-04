@@ -6,20 +6,20 @@ from apricot.core.models.build.components import StanModelNoise
 
 noise_infer = {
     'name': 'infer',
-    'data': 'real<lower=0> xi_scale;',
-    'parameters': 'real<lower=0> xi;',
-    'model': 'xi ~ normal(0, xi_scale);',
-    'args': [('xi', 1)],
-    'to_sample': ['xi'],
-    'data_priors': ['xi_scale']
+    'data': 'real<lower=0> sigma_scale;',
+    'parameters': 'real<lower=0> sigma;',
+    'model': 'sigma ~ normal(0, sigma_scale);',
+    'args': [('sigma', 1)],
+    'to_sample': ['sigma'],
+    'data_priors': ['sigma_scale']
 }
 
 
 noise_deterministic = {
     'name': 'deterministic',
-    'data': 'real<lower=0> xi;',
-    'args': ('xi', 1),
-    'data_priors': ['xi'],
+    'data': 'real<lower=0> sigma;',
+    'args': ('sigma', 1),
+    'data_priors': ['sigma'],
 }
 
 
@@ -30,4 +30,5 @@ AVAILABLE = {
 
 
 def make_noise(noise_type):
+    """ Make the Stan model part for the requested noise function. """
     return StanModelNoise(**AVAILABLE[noise_type])

@@ -16,15 +16,15 @@ X_DOT_BETA = 'mu = X_matrix * beta;'
 
 MU_TO_ZEROS = 'mu = rep_vector(0,n);'
 
-L_COV_EQ_XI = '\n'.join([
-    'matrix L_cov_eq_xi(vector[] x, real amp, vector ls, real xi, real jitter, int n) {',
+L_COV_EQ_SIGMA = '\n'.join([
+    'matrix L_cov_eq_sigma(vector[] x, real amp, vector ls, real sigma, real jitter, int n) {',
     '  matrix[n, n] C;',
     '  real tmp;',
     '  real amp_sq = square(amp);',
-    '  real xi_sq = square(xi);',
+    '  real sigma_sq = square(sigma);',
     '  for (i in 1:n) {',
     '    for (j in 1:i) {',
-    '      if (i==j){ C[i, i] = amp_sq + xi_sq + jitter;}',
+    '      if (i==j){ C[i, i] = amp_sq + sigma_sq + jitter;}',
     '      if (i!=j){',
     '        tmp = amp_sq * exp( -0.5 * dot_self((x[i] - x[j]) ./ ls));',
     '        C[i, j] = tmp;',
@@ -36,15 +36,15 @@ L_COV_EQ_XI = '\n'.join([
     '}',
 ])
 
-L_COV_RQ_XI = '\n'.join([
-    'matrix L_cov_rq_xi(vector[] x, real amp, real kappa, vector ls, real xi, real jitter, int n) {',
+L_COV_RQ_SIGMA = '\n'.join([
+    'matrix L_cov_rq_sigma(vector[] x, real amp, real kappa, vector ls, real sigma, real jitter, int n) {',
     '  matrix[n, n] C;',
     '  real tmp;',
     '  real amp_sq = square(amp);',
-    '  real xi_sq = square(xi);',
+    '  real sigma_sq = square(sigma);',
     '  for (i in 1:n) {',
     '    for (j in 1:i) {',
-    '      if (i==j){ C[i, i] = amp_sq + xi_sq + jitter;}',
+    '      if (i==j){ C[i, i] = amp_sq + sigma_sq + jitter;}',
     '      if (i!=j){',
     '        tmp = amp_sq * pow( 1 + 0.5 * dot_self((x[i] - x[j]) ./ ls) / kappa, -kappa);',
     '        C[i, j] = tmp;',
@@ -58,18 +58,18 @@ L_COV_RQ_XI = '\n'.join([
 
 
 # TODO: vectorise inner r calculation
-L_COV_M52_XI = '\n'.join([
-    'matrix L_cov_m52_xi(vector[] x, real amp, vector ls, real xi, real jitter, int n, int d) {',
+L_COV_M52_SIGMA = '\n'.join([
+    'matrix L_cov_m52_sigma(vector[] x, real amp, vector ls, real sigma, real jitter, int n, int d) {',
     '  matrix[n, n] C;',
     '  real amp_sq = square(amp);',
-    '  real xi_sq = square(xi);',
+    '  real sigma_sq = square(sigma);',
     '  real sqrt5 = sqrt(5.0);',
     '  real r_sq;',
     '  real r;',
     '  real tmp;',
     '  for (i in 1:n) {',
     '    for (j in 1:i) {',
-    '      if (i==j) {C[i,i] = amp_sq + xi_sq + jitter;}',
+    '      if (i==j) {C[i,i] = amp_sq + sigma_sq + jitter;}',
     '      if (i!=j) {',
     '        r_sq = 0;',
     '        for (dim in 1:d) {',
@@ -87,18 +87,18 @@ L_COV_M52_XI = '\n'.join([
 ])
 
 # TODO: vectorise inner r calculation
-L_COV_M32_XI = '\n'.join([
-    'matrix L_cov_m32_xi(vector[] x, real amp, vector ls, real xi, real jitter, int n, int d) {',
+L_COV_M32_SIGMA = '\n'.join([
+    'matrix L_cov_m32_sigma(vector[] x, real amp, vector ls, real sigma, real jitter, int n, int d) {',
     '  matrix[n, n] C;',
     '  real amp_sq = square(amp);',
-    '  real xi_sq = square(xi);',
+    '  real sigma_sq = square(sigma);',
     '  real sqrt3 = sqrt(3.0);',
     '  real r_sq;',
     '  real r;',
     '  real tmp;',
     '  for (i in 1:n) {',
     '    for (j in 1:i) {',
-    '      if (i==j) {C[i,i] = amp_sq + xi_sq + jitter;}',
+    '      if (i==j) {C[i,i] = amp_sq + sigma_sq + jitter;}',
     '      if (i!=j) {',
     '        r_sq = 0;',
     '        for (dim in 1:d) {',

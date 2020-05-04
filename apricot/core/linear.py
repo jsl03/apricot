@@ -51,44 +51,51 @@ def get_lreg_model() -> pystan.StanModel:
     return pystan.StanModel(model_code=LREG_QR)
 
 
-class LinearModel(object):
+class LinearModel:
     """ Bayesian Linear Regression (QR parametrisation) """
-    def __init__(self, x: np.ndarray, y: np.ndarray) -> None:
-        n, d = x.shape
+    def __init__(self, x_data: np.ndarray, y_data: np.ndarray) -> None:
+        n_pts, index_dimension = x_data.shape
         data = {
-            'x': x,
-            'n': n,
-            'd': d,
-            'y': y,
-            'sigma_scale': y.std() / 10,
+            'x': x_data,
+            'n': n_pts,
+            'd': index_dimension,
+            'y': y_data,
+            'sigma_scale': y_data.std() / 10,
         }
         model = get_lreg_model()
         samples = model.sampling(data)
         self.alpha = samples['alpha']
         self.beta = samples['beta']
         self.sigma = samples['sigma']
-        self.m = self.alpha.shape[0]
+        self.n_samples = self.alpha.shape[0]
 
-    def expectation(self, xstar: np.ndarray):
+    def expectation(self, x_star: np.ndarray):
         """ Posterior expectation"""
-        ystar = np.zeros(xstar.shape[0], order='C')
-        for i in range(self.m):
-            ystar += np.dot(xstar, self.beta[i, :]) + self.alpha[i]
-        return ystar / self.m
+        y_pred = np.zeros(x_star.shape[0], order='C')
+        for i in range(self.n_samples):
+            y_pred += np.dot(x_star, self.beta[i, :]) + self.alpha[i]
+        return y_pred / self.n_samples
 
-    def predict(self, xstar: np.ndarray) -> typing.Tuple[np.ndarray, np.ndarray]:
+    def predict(
+            self,
+            x_star: np.ndarray
+    ) -> typing.Tuple[np.ndarray, np.ndarray]:
         """ Predictive distributions"""
-        mu = np.empty((self.m, xstar.shape[0]), order='C')
-        for i in range(self.m):
-            mu[i, :] = np.dot(xstar, self.beta[i, :]) + self.alpha[i]
-        return mu, self.sigma
+        pred_means = np.empty((self.n_samples, x_star.shape[0]), order='C')
+        for i in range(self.n_samples):
+            pred_means[i, :] = np.dot(x_star, self.beta[i, :]) + self.alpha[i]
+        return pred_means, self.sigma
 
-    def lppd(self, xstar: np.ndarray, y: np.ndarray) -> np.ndarray:
+    def lppd(self, x_star: np.ndarray, y_star: np.ndarray) -> np.ndarray:
         """Log Pointwise Predictive Densities"""
-        n = y.shape[0]
-        lppd = np.empty((self.m, n), order='C')
-        for i in range(self.m):
-            mu = np.dot(xstar, self.beta[i, :]) + self.alpha[i]
-            sigma = self.sigma[i]
-            lppd[i, :] = stats.norm.logpdf(y, loc=mu, scale=np.full(n, sigma))
+        n_pts = y_star.shape[0]
+        lppd = np.empty((self.n_samples, n_pts), order='C')
+        for i in range(self.n_samples):
+            pred_mean = np.dot(x_star, self.beta[i, :]) + self.alpha[i]
+            pred_sd = self.sigma[i]
+            lppd[i, :] = stats.norm.logpdf(
+                y_star,
+                loc=pred_mean,
+                scale=np.full(n_pts, pred_sd)
+            )
         return lppd

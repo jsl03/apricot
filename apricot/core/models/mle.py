@@ -1,7 +1,7 @@
 # This file is licensed under Version 3.0 of the GNU General Public
 # License. See LICENSE for a text of the license.
 # ------------------------------------------------------------------------------
-from typing import (Callable, Tuple, Optional, Dict, Any, Mapping, cast)
+from typing import Tuple, Optional, Dict, Any, Mapping, cast
 import numpy as np  # type: ignore
 from scipy import optimize  # type: ignore
 from apricot.core.gp_internal import NLMLEqKernel  # type: ignore
@@ -18,16 +18,16 @@ if False:  # pylint: disable=using-constant-test
 LOGGER = get_logger()
 
 
-def run_mle(
+def run_mle(  # pylint: disable=too-many-arguments, too-many-locals
         interface_instance: 'apricot.core.models.interface.Interface',
-        x: np.ndarray,
-        y: np.ndarray,
+        x_data: np.ndarray,
+        y_data: np.ndarray,
         jitter: float = 1e-10,
         bounds: Optional[ta.Bounds] = None,
         ls_lower: float = 0.05,
         ls_upper: float = 1.0,
-        xi_lower: float = 0.0,
-        xi_upper: Optional[float] = None,
+        sigma_lower: float = 0.0,
+        sigma_upper: Optional[float] = None,
         amp_lower: float = 0.0,
         amp_upper: float = 1.0,
         grid_size: int = 5000,
@@ -42,9 +42,9 @@ def run_mle(
     ----------
     interface_instance: intstance of apricot.core.models.interface.Interface
         Interface to the model who's hyperparameters should be identified.
-    x: ndarray
+    x_data: ndarray
         (n, d) array of n sample points in d dimensions.
-    y: ndarray
+    y_data: ndarray
         (n) array of n responses corresponding to the rows of x.
     jitter: float, optional
         Magnitude of stability jitter to be added to the leading diagonal of
@@ -61,13 +61,13 @@ def run_mle(
         Grid search lower bound for anisotropic lengthscales. Default = 0.05.
     ls_upper: float, optional
         Grid search upper bound for anisotropic lengthscales. Default = 1.
-    xi_lower: float, optional
+    sigma_lower: float, optional
         Grid search lower bound for noise standard deviation. Default = 0
-    xi_upper: {None, float}, optional
+    sigma_upper: {None, float}, optional
         Grid search upper bound for noise standard deviation. If None and
-        infer_noise is True, xi_upper is equal to 1/10 of the
+        infer_noise is True, sigma_upper is equal to 1/10 of the
         sample standard deviation for function observations, that is:
-        xi_upper = np.std(y) / 10. Default = None.
+        sigma_upper = np.std(y) / 10. Default = None.
     amp_lower: float, optional
         Grid search lower bound for marginal standard deviation. Default = 0.
     amp_upper: float, optional
@@ -88,7 +88,7 @@ def run_mle(
         Callback function. Receives the parameter vector queried by the
         optimisation algorithm at each iteration. Used primarily for debugging.
     """
-    noise_type, xi = interface_instance.noise_type
+    noise_type, sigma = interface_instance.noise_type
     kernel_type = interface_instance.kernel_type
     if kernel_type != 'eq':
         msg = 'MLE is currently only implemented for the EQ kernel'
@@ -97,8 +97,8 @@ def run_mle(
         'bounds': bounds,
         'ls_lower': ls_lower,
         'ls_upper': ls_upper,
-        'xi_lower': xi_lower,
-        'xi_upper': xi_upper,
+        'sigma_lower': sigma_lower,
+        'sigma_upper': sigma_upper,
         'amp_lower': amp_lower,
         'amp_upper': amp_upper,
         'grid_size': grid_size,
@@ -107,20 +107,32 @@ def run_mle(
         'seed': seed
     }
     if noise_type == 'deterministic':
-        xi = cast(float, xi)  # let mypy know xi is always a float here
-        obj, obj_jac = make_objective_fixed_xi(x, y, xi, jitter)
+        sigma = cast(float, sigma)  # sigma is always a float here
+        obj, obj_jac = make_objective_fixed_noise(
+            x_data,
+            y_data,
+            sigma,
+            jitter
+        )
         grid_opts_dict['infer_noise'] = False
         opts = cast(Mapping[str, Any], grid_opts_dict)
-        theta_grid = get_theta_grid(x, y, **opts)
+        theta_grid = get_theta_grid(x_data, y_data, **opts)
     elif noise_type == 'infer':
-        obj, obj_jac = make_objective_infer_xi(x, y, jitter)
+        obj, obj_jac = make_objective_infer_noise(
+            x_data,
+            y_data,
+            jitter
+        )
         grid_opts_dict['infer_noise'] = True
         opts = cast(Mapping[str, Any], grid_opts_dict)
-        theta_grid = get_theta_grid(x, y, **opts)
+        theta_grid = get_theta_grid(x_data, y_data, **opts)
     else:
         raise RuntimeError('Unknown noise type.')
     theta0, ftheta0 = theta_grid_search(obj, theta_grid)
-    LOGGER.debug(theta0)
+    LOGGER.debug(
+        'theta0: %(theta0)s NLML: %(f)s',
+        {'theta0': theta0, 'f': ftheta0}
+    )
     ret = run_optimiser(obj_jac, theta0, callback)
     return mle_glue(interface_instance, ret)
 
@@ -136,9 +148,9 @@ def run_optimiser(
     ----------
     objective: ndarray -> (float, ndarray)
         Objective function. Accepts a vector, theta, containing the
-        hyperparameters [amp, <xi>, ls_1, ..., ls_d], and returns a tuple
+        hyperparameters [amp, <sigma>, ls_1, ..., ls_d], and returns a tuple
         containing the value of the negative log marginal likelihood and its
-        partial derivatives with respect to theta. Xi is added automatically
+        partial derivatives with respect to theta. sigma is added automatically
         for NLML functions created by apricot which exhibit fixed noise.
     theta0: ndarray
         Initial values of the hyperparameters from which to start the
@@ -168,12 +180,12 @@ def run_optimiser(
     return opt_result
 
 
-def get_bounds_grid(  # pylint: disable=C0103, R0913
-        d_index: int,
+def get_bounds_grid(  # pylint: disable=too-many-arguments
+        index_dimension: int,
         amp_lower: float,
         amp_upper: float,
-        xi_lower: float,
-        xi_upper: float,
+        sigma_lower: float,
+        sigma_upper: float,
         ls_lower: float,
         ls_upper: float,
         infer_noise: bool
@@ -181,20 +193,20 @@ def get_bounds_grid(  # pylint: disable=C0103, R0913
     """ Create dimensionwise bounds for the hyperparameter grid. """
     bounds = [(amp_lower, amp_upper)]
     if infer_noise:
-        bounds += [(xi_lower, xi_upper)]
-    bounds += [(ls_lower, ls_upper)] * d_index
+        bounds += [(sigma_lower, sigma_upper)]
+    bounds += [(ls_lower, ls_upper)] * index_dimension
     return bounds
 
 
-def get_theta_grid(  # pylint: disable=C0103, R0913, R0914
-        x: np.ndarray,
-        y: np.ndarray,
+def get_theta_grid(  # pylint: disable=too-many-arguments, too-many-locals
+        x_data: np.ndarray,
+        y_data: np.ndarray,
         infer_noise: bool = False,
         bounds: Optional[ta.Bounds] = None,
         ls_lower: float = 0.05,
         ls_upper: float = 1.0,
-        xi_lower: float = 0.0,
-        xi_upper: Optional[float] = None,
+        sigma_lower: float = 0.0,
+        sigma_upper: Optional[float] = None,
         amp_lower: float = 0.0,
         amp_upper: float = 1.0,
         grid_size: int = 5000,
@@ -203,28 +215,28 @@ def get_theta_grid(  # pylint: disable=C0103, R0913, R0914
         seed: Optional[int] = None
 ) -> np.ndarray:
     """ Construct the initial hyperparameter grid. """
-    d_index = x.shape[1]
+    index_dimension = x_data.shape[1]
     if infer_noise:
-        d_grid = d_index + 2
-    if xi_upper is None:
-        xi_upper = y.std() / 10
+        grid_dimension = index_dimension + 2
+    if sigma_upper is None:
+        sigma_upper = y_data.std() / 10
     else:
-        d_grid = d_index + 1
+        grid_dimension = index_dimension + 1
     if bounds is None:
         bounds = get_bounds_grid(
-            d_index,
+            index_dimension,
             amp_lower,
             amp_upper,
-            xi_lower,
-            xi_upper,
+            sigma_lower,
+            sigma_upper,
             ls_lower,
             ls_upper,
             infer_noise
         )
-    raw_grid = _exp_grid(
+    raw_grid = exp_grid(
         sample_hypercube(
             grid_size,
-            d_grid,
+            grid_dimension,
             method=grid_method,
             seed=seed,
             options=grid_options
@@ -232,7 +244,7 @@ def get_theta_grid(  # pylint: disable=C0103, R0913, R0914
     )
     theta_grid = np.empty_like(raw_grid, dtype=np.float64)
     for i, _b in enumerate(bounds):
-        theta_grid[:, i] = _scale_vector(raw_grid[:, i], *_b)
+        theta_grid[:, i] = scale_vector(raw_grid[:, i], *_b)
     return theta_grid
 
 
@@ -251,14 +263,14 @@ def theta_grid_search(
     likelihood_func: ndarray -> float
         Negative log marginal likelihood function to evaluate over theta_grid.
     theta_grid: ndarray
-        (n, d_grid) array of hyperparameter samples for which likelihood_func
-        should be queried.
+        (grid_size, grid_dimension) array of hyperparameter samples for which
+        likelihood_func should be queried.
 
     Returns
     -------
     theta0: ndarray
-        (d_grid) array. The row of theta_grid at which likelihood function is a
-        minimum.
+        (grid_dimension) array. The row of theta_grid at which likelihood
+        function is a minimum.
     likf_theta0: float
         The value of likelihood_func at theta0.
     """
@@ -270,9 +282,9 @@ def theta_grid_search(
     return theta_grid[argmin, :], f_grid[argmin]
 
 
-def make_objective_infer_xi(  # pylint: disable=C0103,
-        x: np.ndarray,
-        y: np.ndarray,
+def make_objective_infer_noise(
+        x_data: np.ndarray,
+        y_data: np.ndarray,
         jitter: float = 1e-10
 ) -> Tuple[ta.NLML, ta.NLMLJac]:
     """ Create objective function with variable noise standard deviation.
@@ -286,16 +298,16 @@ def make_objective_infer_xi(  # pylint: disable=C0103,
     accept a length (d+2) vector theta, containing the following parameters in
     this specific order:
         * marginal standard deviation, "amp".
-        * Additive Gaussian noise standard deviation, "xi".
+        * Additive Gaussian noise standard deviation, "sigma".
         * A total of d anisotropic lengthscales, "ls".
 
-    i.e., theta should be a vector of [amp, xi, ls_1, ..., ls_d].
+    i.e., theta should be a vector of [amp, sigma, ls_1, ..., ls_d].
 
     Parameters
     ----------
-    x: ndarray
+    x_data: ndarray
         (n, d) array of n sample points in d dimensions.
-    y: (n) array
+    y_data: (n) array
         (n) array of sample responses, corresponding to the rows of x
     jitter: float, optional
         Stability jitter of the specified magnitude will be added to
@@ -314,7 +326,7 @@ def make_objective_infer_xi(  # pylint: disable=C0103,
         likelihood with respect to theta.
     """
     LOGGER.debug("Creating variable noise NLML function.")
-    objective_ = NLMLEqKernel(x, y, jitter)
+    objective_ = NLMLEqKernel(x_data, y_data, jitter)
 
     def objective(theta: np.ndarray) -> float:
         return objective_(theta)
@@ -327,10 +339,10 @@ def make_objective_infer_xi(  # pylint: disable=C0103,
     return objective, objective_jac
 
 
-def make_objective_fixed_xi(  # pylint: disable=C0103,
-        x: np.ndarray,
-        y: np.ndarray,
-        xi: float,
+def make_objective_fixed_noise(
+        x_data: np.ndarray,
+        y_data: np.ndarray,
+        sigma: float,
         jitter: float = 1e-10
 ) -> Tuple[ta.NLML, ta.NLMLJac]:
     """ Create objective function with fixed noise standard deviation.
@@ -338,7 +350,7 @@ def make_objective_fixed_xi(  # pylint: disable=C0103,
     Creates a negative log marginal likelihood (NLML) function and a function
     returning its derivatives for the exponentiated quadratic (EQ) kernel,
     given sample points x, sample responses y, additive Gaussian noise of
-    standard deviation xi, and stability jitter of magnitude jitter.
+    standard deviation sigma, and stability jitter of magnitude jitter.
 
     Both the objective function and the function returning its derivatives
     accept a length (d+1) vector theta, containing the following parameters in
@@ -348,15 +360,15 @@ def make_objective_fixed_xi(  # pylint: disable=C0103,
 
     i.e., theta should be a vector of [amp, ls_1, ..., ls_d].
 
-    The requested value of xi is assigned automatically.
+    The requested value of sigma is assigned automatically.
 
     Parameters
     ----------
-    x: ndarray
+    x_data: ndarray
         (n, d) array of n sample points in d dimensions.
-    y: (n) array
+    y_data: (n) array
         (n) array of sample responses, corresponding to the rows of x.
-    xi: float >= 0
+    sigma: float >= 0
         Standard deviation of Gaussian noise to be added to the leading
         diagonal of the sample covariance matrix. Is permitted to be 0, but
         may not be negative.
@@ -377,19 +389,19 @@ def make_objective_fixed_xi(  # pylint: disable=C0103,
         a length (d+1) vector of derivatives of the negative log marginal
         likelihood with respect to theta.
     """
-    LOGGER.debug("Creating NLML function with xi=%s", xi)
-    objective_ = NLMLEqKernel(x, y, jitter)
+    LOGGER.debug("Creating NLML function with sigma=%s", sigma)
+    objective_ = NLMLEqKernel(x_data, y_data, jitter)
 
     def objective(theta_partial):
-        theta = np.insert(theta_partial, 1, xi)
+        theta = np.insert(theta_partial, 1, sigma)
         return objective_(theta)
 
     def objective_jac(theta_partial):
         if any(theta_partial.ravel() <= 0):
             return np.inf, np.full_like(theta_partial, np.inf)
-        theta = np.insert(theta_partial, 1, xi)
-        # need to remove derivative in position 1 since xi is fixed
-        return fixed_xi_output_helper(*objective_.jac(theta))
+        theta = np.insert(theta_partial, 1, sigma)
+        # need to remove derivative in position 1 since sigma is fixed
+        return fixed_sigma_output_helper(*objective_.jac(theta))
 
     return objective, objective_jac
 
@@ -403,17 +415,17 @@ def mle_glue(
     #  if not ret['success']:
     #  raise RuntimeError(ret['message'])
     theta = ret['x']
-    noise_type, xi = interface_instance.noise_type
+    noise_type, sigma = interface_instance.noise_type
     if noise_type == 'infer':
         hyperparameters = {
             'amp': np.array([theta[0]], order='F'),
-            'xi': np.array([theta[1]], order='F'),
+            'sigma': np.array([theta[1]], order='F'),
             'ls': np.atleast_2d(theta[2:])
         }
     else:
         hyperparameters = {
             'amp': np.array([theta[0]], order='F'),
-            'xi': np.array([xi], order='F', dtype=np.float64),
+            'sigma': np.array([sigma], order='F', dtype=np.float64),
             'ls': np.atleast_2d(theta[1:])
         }
     info = {
@@ -425,7 +437,7 @@ def mle_glue(
     return hyperparameters, info
 
 
-def fixed_xi_output_helper(
+def fixed_sigma_output_helper(
         loglik: float,
         jac: np.ndarray
 ) -> Tuple[float, np.ndarray]:
@@ -433,14 +445,15 @@ def fixed_xi_output_helper(
     return loglik, np.delete(jac, 1)
 
 
-def _exp_grid(grid: np.ndarray) -> np.ndarray:
+def exp_grid(grid: np.ndarray) -> np.ndarray:
     """Take the exponent of grid then scale the points between 0 and 1"""
     return (np.exp(grid) - 1) / (np.e - 1)
 
 
-def _scale_vector(
+def scale_vector(
         vector: np.ndarray,
         lower: float,
         upper: float
 ) -> np.ndarray:
+    """ Scale vector on [0, 1] to be between [lower, upper]"""
     return (vector * (upper - lower)) + lower

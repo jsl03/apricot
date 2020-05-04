@@ -4,12 +4,12 @@
 from typing import List, Optional, Dict, Any
 import re
 import numpy as np  # type: ignore
-from apricot.core import utils
+from apricot.core.models import type_aliases as ta
 
 
 # for satisfying forward type checking
-if False:
-    import apricot
+if False:  # pylint: disable=using-constant-test
+    import apricot  # pylint: disable=unused-import
 
 
 def slice_in_order(
@@ -25,14 +25,13 @@ def slice_in_order(
     """
     if any((match(col, target) for col in colnames)):
         return array[:, np.array([match(col, target) for col in colnames])]
-    else:
-        return None
+    return None
 
 
-def match(s: str, target: str) -> bool:
-    """ Strips off any brackets from string x and checks if it is equivalent
+def match(name: str, target: str) -> bool:
+    """ Strips off any brackets from string name and checks if it is equivalent
     to string target. """
-    s_stripped = re.sub('\[.*\]', '', s)
+    s_stripped = re.sub(r'\[.*\]', '', name)
     return s_stripped == target
 
 
@@ -41,12 +40,11 @@ def param_to_2dfarray(arr: np.ndarray) -> np.ndarray:
     return np.atleast_1d(arr).reshape(1, -1, order='F')
 
 
-@utils.maybe
 def hmc_glue(
         interface: 'apricot.core.models.interface.Interface',
         samples: np.ndarray,
         info: Dict[str, Any],
-) -> dict:
+) -> ta.Hyperparameters:
     """ Formatting for hyperparameters obtained via Stan using HMC.
 
     Slices out the columns of samples required by the model in order to create
@@ -69,7 +67,7 @@ def hmc_glue(
     required = (
         interface.theta +
         interface.beta +
-        interface.xi +
+        interface.sigma +
         ['lp__']
     )
     hyperparameters = {}
@@ -79,9 +77,9 @@ def hmc_glue(
             parameter,
             info['colnames']
         )
-    # if the model is deterministic, manually add xi
-    if (interface.noise_type[0] == 'deterministic') & ('xi' in required):
-        hyperparameters['xi'] = np.full(
+    # if the model is deterministic, manually add sigma and its value
+    if (interface.noise_type[0] == 'deterministic') & ('sigma' in required):
+        hyperparameters['sigma'] = np.full(
             (samples.shape[0], 1),
             interface.noise_type[1],
             order='F',
@@ -90,12 +88,10 @@ def hmc_glue(
     return hyperparameters
 
 
-@utils.maybe
 def map_glue(
         interface: 'apricot.core.models.interface.Interface',
-        opt_result: Dict[str, Any],
-        info: dict,
-) -> dict:
+        opt_result: Dict[str, Any]
+) -> ta.Hyperparameters:
     """ Formatting for hyperparameters obtained via Stan using map.
 
     Parameters
@@ -115,7 +111,7 @@ def map_glue(
     required = (
         interface.theta +
         interface.beta +
-        interface.xi
+        interface.sigma
     )
     hyperparameters = {}
     for parameter in required:
@@ -123,9 +119,9 @@ def map_glue(
             hyperparameters[parameter] = param_to_2dfarray(
                 opt_result[parameter]
             )
-    # if the model is deterministic, manually add xi
-    if (interface.noise_type[0] == 'deterministic') & ('xi' in required):
-        hyperparameters['xi'] = np.full(
+    # if the model is deterministic, manually add sigma and its value
+    if (interface.noise_type[0] == 'deterministic') & ('sigma' in required):
+        hyperparameters['sigma'] = np.full(
             (1, 1),
             interface.noise_type[1],
             order='F',

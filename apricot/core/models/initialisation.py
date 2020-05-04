@@ -1,24 +1,25 @@
 # This file is licensed under Version 3.0 of the GNU General Public
 # License. See LICENSE for a text of the license.
 # ------------------------------------------------------------------------------
-from typing import Optional, Union, Dict, List, Any, Mapping, cast, Literal
+from typing import Optional, Union, Dict, Any, Mapping
 import numpy as np  # type: ignore
 from apricot.core.models import type_aliases as ta
 from apricot.core.logger import get_logger
 from apricot.core.models.prior import ls_inv_gamma
 
-# satisfy forward type checks
-if False:
-    import apricot
+
+# for satisfying forward type checking
+if False:  # pylint: disable=using-constant-test
+    import apricot  # pylint: disable=unused-import
 
 
 LOGGER = get_logger()
 
 
-def make_pystan_dict(
+def make_pystan_dict(  # pylint: disable=too-many-arguments
         interface_instance: 'apricot.core.models.interface.Interface',
-        x: np.ndarray,
-        y: np.ndarray,
+        x_data: np.ndarray,
+        y_data: np.ndarray,
         jitter: float = 1e-10,
         ls_options: ta.LsPriorOptions = None,
         seed: Optional[int] = None,
@@ -33,9 +34,9 @@ def make_pystan_dict(
     ----------
     interface_instance : apricot.core.models.interface.Interface
         pyStan model interface.
-    x : ndarray
+    x_data : ndarray
         (n, d) array of sample points.
-    y : ndarray
+    y_data : ndarray
         (n,) array of responses.
     jitter : float, optional
         Variance of stability jitter (square root this quantity for a standard
@@ -56,12 +57,12 @@ def make_pystan_dict(
         invoke either its sampling or optimizing methods with data=data.
     """
 
-    n, d = x.shape
+    n_samples, index_dimension = x_data.shape
     data: Dict[Any, Union[int, float, np.ndarray]] = {
-        'x': x,
-        'y': y,
-        'n': n,
-        'd': d,
+        'x': x_data,
+        'y': y_data,
+        'n': n_samples,
+        'd': index_dimension,
         'jitter': jitter,
     }
 
@@ -69,7 +70,7 @@ def make_pystan_dict(
     if interface_instance.kernel_type != 'eq_flat':
         # lengthscales use inverse gamma hyperprior
         ls_alpha, ls_beta = ls_inv_gamma.ls_inv_gamma_prior(
-            x,
+            x_data,
             ls_options,
             seed=seed
         )
@@ -87,29 +88,28 @@ def make_pystan_dict(
 
     # set up prior for beta if using a linear mean
     if interface_instance.mean_function_type == 'linear':
-        data['beta_loc'] = np.zeros(d+1, dtype=np.float64)
-        data['beta_scale'] = np.ones(d+1, dtype=np.float64)
+        data['beta_loc'] = np.zeros(index_dimension + 1, dtype=np.float64)
+        data['beta_scale'] = np.ones(index_dimension + 1, dtype=np.float64)
 
-    # set xi to Normal(0, xi_scale) if inferring xi, where xi_scale = sd(y)/10
+    # set sigma to Normal(0, sigma_scale) if inferring sigma, where
+    # sigma_scale = sd(y)/10
     if interface_instance.noise_type[0] == 'infer':
-        data['xi_scale'] = np.std(y) / 10.0
+        data['sigma_scale'] = np.std(y_data) / 10.0
 
     elif interface_instance.noise_type[0] == 'deterministic':
-        data['xi'] = interface_instance.noise_type[1]
+        data['sigma'] = interface_instance.noise_type[1]
 
     if interface_instance.warping:
         if interface_instance.warping == 'linear':
-            data['alpha_warp_mu'] = np.zeros(d, dtype=np.float64)
-            data['alpha_warp_sigma'] = np.full(d, 0.5)
-            data['beta_warp_mu'] = np.zeros(d, dtype=np.float64)
-            data['beta_warp_sigma'] = np.full(d, 0.5)
+            data['alpha_warp_mu'] = np.zeros(index_dimension, dtype=np.float64)
+            data['alpha_warp_sigma'] = np.full(index_dimension, 0.5)
+            data['beta_warp_mu'] = np.zeros(index_dimension, dtype=np.float64)
+            data['beta_warp_sigma'] = np.full(index_dimension, 0.5)
         elif interface_instance.warping == 'sigmoid':
-            data['alpha_warp_mu'] = np.full(d, 2.0)
-            data['alpha_warp_sigma'] = np.full(d, 0.5)
-            data['beta_warp_mu'] = np.full(d, 2.0)
-            data['beta_warp_sigma'] = np.full(d, 0.5)
-
-    cast(ta.PyStanData, data)
+            data['alpha_warp_mu'] = np.full(index_dimension, 2.0)
+            data['alpha_warp_sigma'] = np.full(index_dimension, 0.5)
+            data['beta_warp_mu'] = np.full(index_dimension, 2.0)
+            data['beta_warp_sigma'] = np.full(index_dimension, 0.5)
     return data
 
 
@@ -162,20 +162,25 @@ def get_init(
     if isinstance(init, dict):
         LOGGER.debug('Initialisation: user.')
         return init
-    elif isinstance(init, str):
+
+    if isinstance(init, str):
         if init.lower() == 'stable':
             LOGGER.debug('Initialisation: stable.')
             return init_from_data(interface_instance, stan_dict)
-        else:
-            LOGGER.debug('Initialisation: {0}'.format(init))
-            return init_from_str(init)
-    elif isinstance(init, list):
-        # TODO: handle case in which init is a List. Must match
-        # the number of requested chains!
-        pass
-    raise TypeError(
-        'Unable to parse init option of type "{0}".'.format(type(init))
-    )
+        LOGGER.debug('Initialisation: %s', init)
+        return init_from_str(init)
+
+    if isinstance(init, list):
+        LOGGER.debug('Initialisation: list.')
+
+        # recursively apply get_init to the elements of the list
+        def check_init_list(init_elem):
+            return get_init(interface_instance, init_elem, stan_dict)
+
+        return list(map(check_init_list, init))
+
+    msg = 'Unable to parse init option of type "{0}"'.format(type(init))
+    raise TypeError(msg)
 
 
 def init_from_data(
@@ -198,24 +203,24 @@ def init_from_data(
     init : dict
         Dictionary of initialisation values for the sampler.
     """
-    x = stan_dict['x']
-    y = stan_dict['y']
-    d = stan_dict['d']
-    init: Dict[Any, Union[np.ndarray, float]] = {'ls': np.std(x, axis=0) / 3.0}
-    init['amp'] = np.std(y)
+    x_data = stan_dict['x']
+    y_data = stan_dict['y']
+    index_dimension = stan_dict['d']
+    init: Dict[Any, Union[np.ndarray, float]] = {
+        'ls': np.std(x_data, axis=0) / 3.0
+    }
+    init['amp'] = np.std(y_data)
     if interface_instance.noise_type[0] == 'infer':
-        init['xi'] = np.std(y) / 10.0
+        init['sigma'] = np.std(y_data) / 10.0
     if interface_instance.mean_function_type == 'linear':
-        init['beta'] = np.zeros(d+1, dtype=np.float64)
+        init['beta'] = np.zeros(index_dimension + 1, dtype=np.float64)
     if interface_instance.warping:
         if interface_instance.warping == 'sigmoid':
-            init['alpha_warp'] = np.full(d, 5.0)
-            init['beta_warp'] = np.full(d, 5.0)
+            init['alpha_warp'] = np.full(index_dimension, 5.0)
+            init['beta_warp'] = np.full(index_dimension, 5.0)
         if interface_instance.warping == 'linear':
-            init['alpha_warp'] = np.ones(d, dtype=np.float64)
-            init['beta_warp'] = np.ones(d, dtype=np.float64)
-    # to satisfy type checker
-    cast(ta.InitData, init)
+            init['alpha_warp'] = np.ones(index_dimension, dtype=np.float64)
+            init['beta_warp'] = np.ones(index_dimension, dtype=np.float64)
     return init
 
 

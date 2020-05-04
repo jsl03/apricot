@@ -1,8 +1,7 @@
 # This file is licensed under Version 3.0 of the GNU General Public
 # License. See LICENSE for a text of the license.
 # ------------------------------------------------------------------------------
-from typing import Union, Optional, Tuple
-from apricot.core import exceptions
+from typing import Union, Optional, Tuple, Mapping
 from apricot.core.logger import get_logger
 from apricot.core.models.build import mean_parts
 from apricot.core.models.build import noise_parts
@@ -26,7 +25,7 @@ def parse_kernel(kernel_type: str):
 def parse_noise(
         noise_type: Optional[Union[str, float]]
 ) -> Tuple[str, Optional[float]]:
-    """ Parse requested noise option. 
+    """ Parse requested noise option.
 
     Parameters
     ----------
@@ -45,15 +44,11 @@ def parse_noise(
     noise_value : {None, float}
         Either a floating point number or None.
     """
-
     if noise_type is None:
         return parse_noise_internal(0)
-
-    elif isinstance(noise_type, str):
+    if isinstance(noise_type, str):
         return parse_noise_internal(parse_noise_str(noise_type.lower()))
-
-    else:
-        return parse_noise_internal(parse_noise_float(noise_type))
+    return parse_noise_internal(parse_noise_float(noise_type))
 
 
 def parse_noise_str(as_str: str) -> Union[float, str]:
@@ -80,10 +75,7 @@ def parse_noise_str(as_str: str) -> Union[float, str]:
         return 0.0
     if as_str == 'infer':
         return 'infer'
-    msg = (
-        "noise model must be one of {0}"
-        .format(noise_parts.AVAILABLE)
-    )
+    msg = ("noise model must be one of {0}".format(noise_parts.AVAILABLE))
     raise ValueError(msg)
 
 
@@ -121,7 +113,8 @@ def parse_noise_float(noise_type: float) -> float:
     return noise
 
 
-def parse_noise_internal(noise: Union[str, float]
+def parse_noise_internal(
+        noise: Union[str, float]
 ) -> Tuple[str, Optional[float]]:
     """ Assign noise options to required format.
 
@@ -179,25 +172,51 @@ def parse_mean(mean_type: Optional[Union[str, int]]) -> str:
 
 
 def parse_mean_str(as_str: str) -> str:
+    """ Parse mean type represented as a string.
+
+    Parameters
+    ----------
+    as_str: str
+        The requested mean type.
+
+    Returns
+    -------
+    mean_type: str
+        Either 'zero' or 'linear'.
+    """
     if as_str == 'zero':
         return 'zero'
     if as_str == 'linear':
         LOGGER.warning('Linear mean not yet supported by internal GP!')
         return 'linear'
-    msg = (
-        "mean function must be one of {0}"
-        .format(mean_parts.AVAILABLE)
-    )
+    msg = ("mean function must be one of {0}".format(mean_parts.AVAILABLE))
     raise ValueError(msg)
 
 
 def parse_mean_other(mean_type: int) -> str:
+    """ Parse mean type represented as an integer.
+
+    Realistically, mean_type must be literal 0 for this function not to raise
+    a ValueError, but constant means could be supported in the future.
+
+    Parameters
+    ----------
+    requested_mean_type: int
+        The requested mean type.
+
+    Returns
+    -------
+    mean_type: str
+        Either 'zero' or 'linear'.
+
+    Raises
+    ------
+    ValueError
+        If mean_type cannot be matched to one of the available options.
+    """
     if mean_type == 0:
         return 'zero'
-    msg = (
-        "mean function must be one of {0}"
-        .format(mean_parts.AVAILABLE)
-    )
+    msg = ("mean function must be one of {0}".format(mean_parts.AVAILABLE))
     raise ValueError(msg)
 
 
@@ -226,13 +245,16 @@ def parse_warping(warping: Optional[str]) -> Union[bool, str]:
 
 
 def parse_warping_string(as_str: str) -> Union[bool, str]:
-    if as_str == 'none':
-        return False
-    if as_str == 'linear':
-        return 'linear'
-    if as_str == 'sigmoid':
-        return 'sigmoid'
-    msg = 'Uncrecognised warping option "{0}": must be one of {1}'.format(
-        as_str, [None, 'none', 'linear', 'sigmoid']
-    )
-    raise ValueError(msg)
+    """ Match requested warping option to the appropriate value. """
+    warping_options: Mapping[str, Union[bool, str]] = {
+        'none': False,
+        'linear': 'linear',
+        'sigmoid': 'sigmoid',
+    }
+    try:
+        return warping_options[as_str]
+    except KeyError:
+        msg = 'Unrecognised warping option "{0}": must be one of {1}'.format(
+            as_str, warping_options.keys()
+        )
+        raise ValueError(msg)

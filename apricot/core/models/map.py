@@ -1,25 +1,25 @@
 # This file is licensed under Version 3.0 of the GNU General Public
 # License. See LICENSE for a text of the license.
 # ------------------------------------------------------------------------------
-from typing import cast, Union, Optional, Any, Dict, Mapping, Tuple
+from typing import cast, Optional, Any, Dict, Mapping, Tuple
 import numpy as np  # type: ignore
 from apricot.core import utils
 from apricot.core.logger import get_logger
 from apricot.core.models import type_aliases as ta
 
 
-# satisfy forward type checks
-if False:
-    import apricot
+# for satisfying forward type checking
+if False:  # pylint: disable=using-constant-test
+    import apricot  # pylint: disable=unused-import
 
 
 LOGGER = get_logger()
 
 
-def run_map(
+def run_map(  # pylint: disable=too-many-arguments, too-many-locals
         interface: 'apricot.core.models.interface.Interface',
-        x: np.ndarray,
-        y: np.ndarray,
+        x_data: np.ndarray,
+        y_data: np.ndarray,
         jitter: float = 1e-10,
         ls_options: Optional[ta.LsPriorOptions] = None,
         init_method: ta.InitTypes = 'random',
@@ -35,10 +35,10 @@ def run_map(
     ----------
     interface : instance of models.interface.Interface
         Interface to the desired Stan model
-    x : ndarray
+    x_data : ndarray
         (n,d) array with each row representing a sample point in d-dimensional
         space.
-    y : ndarray
+    y_data : ndarray
         (n,) array of responses corresponding to each row of x.
     jitter : float, optional
         Magnitude of stability jitter. Default = 1e-10.
@@ -80,11 +80,16 @@ def run_map(
     -----
     Can be invoked as an instance method for a given interface: see
     Interface.map
+
+    Raises
+    ------
+    RuntimeError
+        If the optimisation routine failed.
     """
 
     if seed is None:
         seed = utils.random_seed()
-    data = interface.make_pystan_dict(x, y, jitter, ls_options)
+    data = interface.make_pystan_dict(x_data, y_data, jitter, ls_options)
     init = interface.get_init(init_method, data)
     opts: Mapping[str, Any] = {
         'data': data,
@@ -94,7 +99,7 @@ def run_map(
         'iter': max_iter,
         'seed': seed,
     }
-    result = _map_internal(interface, opts, restarts)
+    result = map_internal(interface, opts, restarts)
     if result is not None:
         parameters = result['par']
         info = {
@@ -105,11 +110,9 @@ def run_map(
             'restarts': restarts,
             'lp': result['value']
         }
-    else:
-        # TODO
-        parameters = None
-        info = None
-    return parameters, info
+        return parameters, info
+    msg = 'Failed to identify a solution.'
+    raise RuntimeError(msg)
 
 
 def _assign_new_seed(opts: Dict[str, Any]) -> Dict[str, Any]:
@@ -119,7 +122,7 @@ def _assign_new_seed(opts: Dict[str, Any]) -> Dict[str, Any]:
     return opts
 
 
-def _map_internal(
+def map_internal(
         interface: 'apricot.core.models.interface.Interface',
         opts: Mapping[str, Any],
         restarts: int,
@@ -127,38 +130,39 @@ def _map_internal(
     """ Interface to Stan's optimiser. """
     best = -np.inf
     result = None
-    # prevent mutating original options dictionary in case we need it 
+    exceptions = []
+    # prevent mutating original options dictionary in case we need it
     opts_n = cast(Dict[str, Any], opts).copy()
-    for r in range(restarts):
-        if r > 0:
+    for rep in range(restarts):
+        if rep > 0:
             opts_n = _assign_new_seed(opts_n)
-            LOGGER.debug('Restarting optimiser (r = {0}) new seed: {1}'.format(
-                r, opts_n['seed']
-            ))
+            LOGGER.debug(
+                'Restarting optimiser (r = %(rep)s) new seed: %(seed)s',
+                {'rep': rep, 'seed': opts_n['seed']}
+            )
         try:
             result = interface.pystan_model.optimizing(**opts_n)
             LOGGER.debug(
-                'Optimiser exited normally [lp__ : {0}]'.format(
-                    result['value']
-                )
+                'Optimiser exited normally [lp__ : %(value)s]',
+                {'value': result['value']}
             )
             if result['value'] > best:
                 best = result['value']
-                result = result
+                # result should only be reassigned if value > best
+                result = result  # pylint: disable=self-assigning-variable
         except RuntimeError as rte:
             LOGGER.debug(
-                'RuntimeError encountered (r = {0}): {1}'.format(
-                    r, rte
-                )
+                'RuntimeError encountered (restart # %(rep)s): %(rte)s',
+                {'rep': rep, 'rte': rte}
             )
-            exception = rte
-        if (r == 0) & (restarts > 1):
+            exceptions.append(rte)
+        if (rep == 0) & (restarts > 1):
             opts_n['init'] = 'random'
             LOGGER.debug(
                 'Subsequent initialisations changed to random (repeats > 1)'
             )
-    # TODO at the moment this stores only the *last* exception
-    # encountered above. Better to raise custom RTE and print a list?
     if result is None:
-        raise exception
+        errs = '\n' + '\n'.join([str(exception) for exception in exceptions])
+        msg = 'Converence could be achieved: {0}'.format(errs)
+        raise RuntimeError(msg)
     return result

@@ -13,8 +13,8 @@ from apricot.core.models import model_cache
 from apricot.core.models import type_aliases as ta
 
 
-class Interface(object):
-
+class Interface:
+    # pylint: disable=too-many-instance-attributes
     """ apricot interface to a pyStan GP model."""
 
     def __init__(
@@ -63,8 +63,8 @@ class Interface(object):
         References
         ----------
         [1] Snoek, Jasper, et al. "Input warping for Bayesian optimization of
-        non-stationary functions." International Conference on Machine Learning.
-        2014.
+        non-stationary functions." International Conference on Machine
+        Learning. 2014.
         """
 
         self.kernel_type = parse.parse_kernel(kernel)
@@ -74,10 +74,9 @@ class Interface(object):
 
         kernel_part = build.make_kernel(self.kernel_type, self.warping)
         mean_part = build.make_mean(self.mean_function_type)
-        noise_part = build.make_noise(self.noise_type)
+        noise_part = build.make_noise(self.noise_type[0])
 
-        if self.warping:
-            warp = True
+        warp = bool(self.warping)
 
         self.pystan_model = model_cache.load(
             kernel_part,
@@ -89,33 +88,32 @@ class Interface(object):
         # required arguments for kernel, mean function and noise function
         self.theta = [a[0] for a in kernel_part.args]
         self.beta = [a[0] for a in mean_part.args]
-        self.xi = [a[0] for a in noise_part.args]
+        self.sigma = [a[0] for a in noise_part.args]
 
         # dimensions of the required arguments
         # TODO: attributes probably redundant as of 01.01.2020
         self._theta_dims = [a[1] for a in kernel_part.args]
         self._beta_dims = [a[1] for a in mean_part.args]
-        self._xi_dims = [a[1] for a in noise_part.args]
+        self._sigma_dims = [a[1] for a in noise_part.args]
 
-        # parameters to sample
-        self._pars_to_sample = utils.flatten((
+        # the parameters to sample
+        self.pars_to_sample = utils.flatten((
             kernel_part.to_sample,
             mean_part.to_sample,
             noise_part.to_sample,
             ['lp__']
         ))
-
-        # required data to run the sampler
+        # the data required to run the sampler
         self._data_required = utils.flatten((
             kernel_part.data_priors,
             mean_part.data_priors,
             noise_part.data_priors
         ))
 
-    def make_pystan_dict(
+    def make_pystan_dict(  # pylint: disable=too-many-arguments
             self,
-            x: np.ndarray,
-            y: np.ndarray,
+            x_data: np.ndarray,
+            y_data: np.ndarray,
             jitter: float = 1e-10,
             ls_options: Optional[ta.LsPriorOptions] = None,
             seed: Optional[int] = None
@@ -124,10 +122,10 @@ class Interface(object):
 
         Parameters
         ----------
-        x : ndarray
+        x_data : ndarray
             (n,d) array with each row representing a sample point in
             d-dimensional space.
-        y : ndarray
+        y_data : ndarray
             (n,) array of responses corresponding to each row of x.
         jitter : float, optional
             Stability jitter. Default = 1e-10.
@@ -147,8 +145,8 @@ class Interface(object):
         """
         return initialisation.make_pystan_dict(
             self,
-            x,
-            y,
+            x_data,
+            y_data,
             jitter,
             ls_options,
             seed=seed
@@ -189,10 +187,10 @@ class Interface(object):
         """
         return initialisation.get_init(self, init_method, stan_dict)
 
-    def hmc(
+    def hmc(  # pylint: disable=too-many-arguments, too-many-locals
             self,
-            x: np.ndarray,
-            y: np.ndarray,
+            x_data: np.ndarray,
+            y_data: np.ndarray,
             jitter: float = 1e-10,
             ls_options: Optional[ta.LsPriorOptions] = None,
             samples: int = 2000,
@@ -208,10 +206,10 @@ class Interface(object):
 
         Parameters
         ----------
-        x : ndarray
+        x_data : ndarray
             (n,d) array with each row representing a sample point in
             d-dimensional space.
-        y : ndarray
+        y_data : ndarray
             (n,) array of responses corresponding to each row of x.
         jitter : float, optional
             Stability jitter. Default = 1e-10.
@@ -255,25 +253,25 @@ class Interface(object):
         """
         parameters, info = hmc.run_hmc(
             self,
-            x,
-            y,
-            jitter,
-            ls_options,
-            samples,
-            thin,
-            chains,
-            adapt_delta,
-            max_treedepth,
-            seed,
-            permute,
-            init_method,
+            x_data,
+            y_data,
+            jitter=jitter,
+            ls_options=ls_options,
+            samples=samples,
+            thin=thin,
+            chains=chains,
+            adapt_delta=adapt_delta,
+            max_treedepth=max_treedepth,
+            seed=seed,
+            permute=permute,
+            init_method=init_method,
         )
         return parameters, info
 
-    def map(
+    def map(  # pylint: disable=too-many-arguments, too-many-locals
             self,
-            x: np.ndarray,
-            y: np.ndarray,
+            x_data: np.ndarray,
+            y_data: np.ndarray,
             jitter: float = 1e-10,
             ls_options: Optional[ta.LsPriorOptions] = None,
             init_method: ta.InitTypes = 'stable',
@@ -286,10 +284,10 @@ class Interface(object):
 
         Parameters
         ----------
-        x : ndarray
+        x_data : ndarray
             (n,d) array with each row representing a sample point in
             d-dimensional space.
-        y : ndarray
+        y_data : ndarray
             (n,) array of responses corresponding to each row of x.
         jitter : float, optional
              Magnitude of stability jitter. Default = 1e-10.
@@ -333,14 +331,14 @@ class Interface(object):
         """
         parameters, info = maxap.run_map(
             self,
-            x,
-            y,
-            jitter,
-            ls_options,
-            init_method,
-            algorithm,
-            restarts,
-            max_iter,
-            seed
+            x_data,
+            y_data,
+            jitter=jitter,
+            ls_options=ls_options,
+            init_method=init_method,
+            algorithm=algorithm,
+            restarts=restarts,
+            max_iter=max_iter,
+            seed=seed,
         )
         return parameters, info

@@ -1,18 +1,10 @@
 # This file is licensed under Version 3.0 of the GNU General Public
 # License. See LICENSE for a text of the license.
 # ------------------------------------------------------------------------------
-from typing import (
-    Dict,
-    Any,
-    Mapping,
-    Union,
-    Iterable
-)
-from apricot.core.models.build.code_snippets import (
-    X_TO_MATRIX,
-    MU_TO_ZEROS,
-    X_DOT_BETA,
-)
+from typing import Any, Mapping, Union, Iterable
+from apricot.core.models.build.code_snippets import X_TO_MATRIX
+from apricot.core.models.build.code_snippets import MU_TO_ZEROS
+from apricot.core.models.build.code_snippets import X_DOT_BETA
 from apricot.core.models.build.components import StanModelMeanFunction
 
 
@@ -42,4 +34,5 @@ AVAILABLE: Mapping[str, Mapping[str, Union[str, Iterable[str]]]] = {
 
 
 def make_mean(mean_type: str) -> StanModelMeanFunction:
+    """ Make the Stan model part for the requested mean function. """
     return StanModelMeanFunction(**AVAILABLE[mean_type])

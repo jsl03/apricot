@@ -81,4 +81,13 @@ def fuse_code_blocks(
 
 
 def fuse(name: str, block: str) -> str:
+    """ Fuse strings with the appropriate block name into a Stan model block,
+    surrounded by curly braces.
+
+    For Example:
+        >>> fuse('data', 'vector[d] x[n];')
+            data {
+                vector[d] x[n];
+            }
+    """
     return '{0} {{\n  {1}\n}}'.format(name, block)

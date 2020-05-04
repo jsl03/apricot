@@ -15,26 +15,6 @@ _ROOTDIR = os.path.dirname(os.path.abspath(apricot.__file__))
 _MODEL_CACHE = _ROOTDIR + '/cache/'
 
 
-# TODO: belongs in .math?
-def mad(arr: np.ndarray, axis: Optional[int] = None) -> np.ndarray:
-    """ Median absolute deviation.
-
-    Parameters
-    ----------
-    arr : ndarray
-        The array on which to calculate the MAD.
-    axis : {int, None}, optional
-        If provided, calculated the MAD along the specified axis.
-
-    Returns
-    -------
-    mad : {float, ndarray}
-        The MAD, calculated along the specified axis if provided.
-    """
-    deviation = np.abs(arr - np.mean(arr, axis=axis))
-    return np.median(deviation, axis=axis)
-
-
 def maybe(func: Callable) -> Callable:
     """ Decorator for functions which fail if any arguments are None.
 

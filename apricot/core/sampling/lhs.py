@@ -8,22 +8,22 @@ from apricot.core.utils import set_seed
 from apricot.core.models import type_aliases as ta
 
 
-def _maximin(v: np.ndarray, p: int = 2) -> float:
+def _maximin(pairwise_distances: np.ndarray, p_const: int = 2) -> float:
     """ 'maximin' LHS quality criteria of Morris and Mitchell (1995).
 
     The maximin LHS optimality criterion of [1]_.
 
     Parameters
     ----------
-    v : ndarray
+    pairwise_distances: ndarray
         vector of pairwise distances for the sample
-    p : int
+    p_const: int
         Constant. You should not need to change this; see [1]_.
 
     Returns
     -------
     phi : float
-        maximin criteria evaluated for v
+        maximin criteria evaluated for supplied pairwise distances.
 
     References
     ----------
@@ -31,18 +31,18 @@ def _maximin(v: np.ndarray, p: int = 2) -> float:
     computational experiments. Journal of statistical planning and inference,
     43(3), pp.381-402.
     """
-    m = v.shape[0]
+    num_pts = pairwise_distances.shape[0]
     # sort the pairwise distances
-    v_sorted = np.sort(v)
+    distances_sorted = np.sort(pairwise_distances)
     # initialise the accumulator
     phi = 0
-    for i in range(m):
-        # count the number of elements of v smaller than the element i
-        D = v_sorted[i]
-        J = np.array(v_sorted < v_sorted[i], dtype=bool).sum()
+    for i in range(num_pts):
+        # count the number of distances smaller than element i
+        _d = distances_sorted[i]
+        _j = np.array(distances_sorted < distances_sorted[i], dtype=bool).sum()
         # compute the maximin criteria using J and D
-        phi += J*D**(-p)
-    return -(phi**(1./p))
+        phi += _j*_d**(-p_const)
+    return -(phi**(1./p_const))
 
 
 # dict of criteria usable by optimised_lhs
@@ -51,7 +51,11 @@ CRITERIA: Mapping[str, ta.LhsCriteria] = {
 }
 
 
-def lhs(n: int, d: int, seed: Optional[int] = None) -> np.ndarray:
+def lhs(
+        sample_size: int,
+        dimensions: int,
+        seed: Optional[int] = None
+) -> np.ndarray:
     """ Latin Hypercube Sample design.
 
     Generate n stratified samples in d dimensions by drawing samples from a
@@ -63,44 +67,45 @@ def lhs(n: int, d: int, seed: Optional[int] = None) -> np.ndarray:
 
     Parameters
     ----------
-    n : int
+    sample_size: int
         Number of requested sample points
-    d : int
+    dimensions: int
         Number of dimensions to sample in
-    seed : {None, int}, optional
+    seed: {None, int}, optional
         Seed for numpy's random state. If None, an arbitrary seed is generated.
         Default = None.
 
     Returns
     -------
-    sample : ndarray
-        (n,d) array of n sample points in d dimensions. Results are scaled on
-        [0,1] by default.
+    sample: ndarray
+        (sample_size, dimensions) array of n sample points in d dimensions.
+        Results are scaled on [0,1] by default.
 
     See Also
     --------
     mdurs
     optimised_lhs
     """
+    # pylint: disable=no-member
     set_seed(seed)
-    slices = np.linspace(0, 1, n+1)
-    urnd = np.random.random((n, d))  # pylint: disable=no-member
-    lower = slices[:n]
+    slices = np.linspace(0, 1, sample_size + 1)
+    urnd = np.random.random((sample_size, dimensions))
+    lower = slices[:sample_size]
     upper = slices[1:]
-    points = np.empty((n, d), order='C', dtype=np.float64)
-    sample = np.empty((n, d), order='C', dtype=np.float64)
-    for j in range(d):
+    points = np.empty((sample_size, dimensions), order='C', dtype=np.float64)
+    sample = np.empty((sample_size, dimensions), order='C', dtype=np.float64)
+    for j in range(dimensions):
         points[:, j] = urnd[:, j] * (upper - lower) + lower
-        index = np.random.permutation(range(n))
+        index = np.random.permutation(range(sample_size))
         sample[:, j] = points[index, j]
     return sample
 
 
 def mdurs(
-        n: int,
-        d: int,
+        sample_size: int,
+        dimensions: int,
         scale_factor: int = 10,
-        k: int = 2,
+        nearest_k: int = 2,
         measure: str = 'cityblock',
         seed: Optional[int] = None,
 ) -> np.ndarray:
@@ -122,28 +127,28 @@ def mdurs(
 
     Parameters
     ----------
-    n : int
+    sample_size: int
         Number of requested sample points
-    d : int
+    dimensions: int
         Number of dimensions
     scale_factor : int, optional
         Scale factor (default = 10). You should not need to change this; see
         [1]_.
-    k : int, optional
+    nearest_k: int, optional
         Number of neighbours used to compute moving average (default = 2).
         You should not need to change this; see [1]_.
-    measure : string, optional
+    measure: string, optional
         Distance measure to be used. Passed as a method argument to scipy's
         spatial.distance.cdist function. Default = 'cityblock'.
-    seed : {None, int}, optional
+    seed: {None, int}, optional
         Seed for numpy's random state. If None, an arbitrary seed is generated.
         Default = None.
 
     Returns
     -------
-    random_sample : ndarray
-        (n, d) array of n sample points in d dimensions. Results are scaled
-        on [0,1].
+    random_sample: ndarray
+        (sample_size, dimensions) array of n sample points in d dimensions.
+        Results are scaled on [0,1].
 
     Notes
     -----
@@ -164,23 +169,24 @@ def mdurs(
     optimised_lhs
     scipy.spatial.distance.cdist
     """
+    # pylint: disable=no-member
     set_seed(seed)
-    n_init = scale_factor * n
-    random_sample = np.random.random((n_init, d))  # pylint: disable=no-member
-    while random_sample.shape[0] > n:
+    n_pool = scale_factor * sample_size
+    random_sample = np.random.random((n_pool, dimensions))
+    while random_sample.shape[0] > sample_size:
         len_s = random_sample.shape[0]
         distance_matrix = cdist(random_sample, random_sample, metric=measure)
         ret = np.empty(len_s, dtype=np.float64, order='C')
         for i in range(len_s):
-            ret[i] = np.mean(np.sort(distance_matrix[i, :])[1:1 + k])
+            ret[i] = np.mean(np.sort(distance_matrix[i, :])[1:1 + nearest_k])
         random_sample = np.delete(random_sample, np.argmin(ret), axis=0)
     return random_sample
 
 
 # TODO: fix random seed behaviour + possible refactor
-def optimised_lhs(  # pylint: disable=too-many-arguments, too-many-locals
-        n: int,
-        d: int,
+def optimised_lhs(
+        sample_size: int,
+        dimensions: int,
         iterations: int = 100,
         measure: str = 'euclidean',
         criteria: Union[str, ta.LhsCriteria] = 'maximin',
@@ -209,28 +215,28 @@ def optimised_lhs(  # pylint: disable=too-many-arguments, too-many-locals
 
     Parameters
     ----------
-    n : int
+    sample_size: int
         Number of requested sample points
-    d : int
+    dimensions: int
         Number of dimensions
-    iterations : int, optional
+    iterations: int, optional
         The number of individual designs to compare. The design maximising
         'criteria' after the requested number of iterations will be returned.
         Default = 100.
-    measure : str, optional
+    measure: str, optional
         Distance measure to be used for comparing designs. References one of
         the measures compatible with scipy's spatial.distance.cdist function.
         Default = 'euclidean'.
-    criteria : {str, callable}, optional
+    criteria: {str, callable}, optional
         Comparison criteria:
         * 'maximin' - maximin criteria.
         * callable - user supplied function; see below.
 
     Returns
     -------
-    s : ndarray
-        (n,d) array of n sample points in d dimensions. Results are scaled on
-        [0,1] by default.
+    sample: ndarray
+        (sample_size, dimensions) array of n sample points in d dimensions.
+        Results are scaled on [0,1].
 
     Notes
     -----
@@ -248,19 +254,20 @@ def optimised_lhs(  # pylint: disable=too-many-arguments, too-many-locals
     --------
     scipy.spatial.distance.cdist
     """
+    # pylint: disable=too-many-arguments, too-many-locals, no-member
     set_seed(seed)
     if options is None:
         options = {}
-    slices = np.linspace(0, 1, n+1)
-    lower = slices[:n]
+    slices = np.linspace(0, 1, sample_size+1)
+    lower = slices[:sample_size]
     upper = slices[1:]
-    indices_list = np.arange(n)
-    points = np.empty((n, d), order='C', dtype=np.float64)
-    sample = np.empty((n, d), order='C', dtype=np.float64)
+    indices_list = np.arange(sample_size)
+    points = np.empty((sample_size, dimensions), order='C', dtype=np.float64)
+    sample = np.empty((sample_size, dimensions), order='C', dtype=np.float64)
     tmp = -np.inf
     for _ in range(iterations):
-        urnd = np.random.random((n, d))  # pylint: disable=no-member
-        for j in range(d):
+        urnd = np.random.random((sample_size, dimensions))
+        for j in range(dimensions):
             points[:, j] = urnd[:, j] * (upper - lower) + lower
             index = np.random.permutation(indices_list)
             sample[:, j] = points[index, j]
@@ -295,10 +302,10 @@ def eval_criteria(
     criterion : float
         Criteria, as evaluated for arr using measure.
     """
-    n = arr.shape[0]
-    ix, jy = np.tril_indices(n, -1)
+    n_pts = arr.shape[0]
+    i_x, j_y = np.tril_indices(n_pts, -1)
     dist = cdist(arr, arr, metric=measure)
-    dist_vector = dist[ix, jy]
+    dist_vector = dist[i_x, j_y]
 
     if isinstance(criteria, str):
         if criteria in CRITERIA:

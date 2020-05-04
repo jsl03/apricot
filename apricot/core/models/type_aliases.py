@@ -1,13 +1,13 @@
 # This file is licensed under Version 3.0 of the GNU General Public
 # License. See LICENSE for a text of the license.
 # ------------------------------------------------------------------------------
-from typing import Mapping, Union, Optional, List, Callable, Tuple, Any
+from typing import Mapping, Union, List, Callable, Tuple, Any
 import numpy as np  # type: ignore
 
 
-# satisfy forward type checks
-if False:
-    import apricot
+# for satisfying forward type checking
+if False:  # pylint: disable=using-constant-test
+    import apricot  # pylint: disable=unused-import
 
 
 InternalGp = Union[
