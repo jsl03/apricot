@@ -68,9 +68,11 @@ It can be installed using `pip3` from inside the apricot source directory:
 
 ## Acknowledgements
 
+The package was produced using research performed at Cranfield University, funded by EPSRC and Airbus UK.
+
 ### Code:
 
-This package makes use of one or more pieces of code from the following authors:
+The package makes use of one or more important pieces of code from the following authors:
 
 * apricot's `setup.py` features code directly from [pybind/python\_example](https://github.com/pybind/python_example).
 
@@ -97,4 +99,4 @@ derived from [Sobol](https://people.sc.fsu.edu/~jburkardt/py_src/sobol/sobol.htm
 
 ## License
 
-GPL v3.
+GPL v3. See LICENSE for a copy of the license. 

@@ -8,6 +8,7 @@
 #include <pybind11/stl.h>
 
 #include "gp_eq_kernel.h"
+#include "gp_eq_loo_objective.h"
 #include "gp_eq_mle_objective.h"
 #include "gp_m32_kernel.h"
 #include "gp_m52_kernel.h"
@@ -117,6 +118,13 @@ PYBIND11_MODULE(gp_internal, m) {
       .def("__call__", &NLMLEqKernel::objective)
       .def("jac", &NLMLEqKernel::objective_jac)
       .def("__repr__", [](const NLMLEqKernel &a) {
-        return "<apricot.core.NLMLEqKernel>";
+        return "<apricot.core.NLMLObjectiveEqKernel>";
+      });
+
+  py::class_<CVEqKernel>(m, "CVEqKernel")
+      .def(py::init<Eigen::MatrixXd, Eigen::VectorXd, double>())
+      .def("__call__", &CVEqKernel::objective)
+      .def("__repr__", [](const CVEqKernel &a) {
+        return "<apricot.core.CVObjectiveEqKernel>";
       });
 }

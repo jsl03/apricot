@@ -921,7 +921,10 @@ class Emulator:
                 param_name,
                 self.info
             )
-        raise RuntimeError('Method is only valid for models fit using HMC.')
+        else:
+            raise RuntimeError(
+                'Method is only valid for models fit using HMC.'
+            )
 
     def plot_divergences(self) -> None:
         """ Parallel co-ordinates plot of sampler behaviour
@@ -933,4 +936,7 @@ class Emulator:
                 self.hyperparameters,
                 self.info
             )
-        raise RuntimeError('Method is only valid for models fit using HMC.')
+        else:
+            raise RuntimeError(
+                'Method is only valid for models fit using HMC.'
+            )

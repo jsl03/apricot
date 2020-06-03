@@ -77,10 +77,8 @@ def run_hmc(  # pylint: disable=too-many-arguments, too-many-locals
     info: dict
         Sampling information
     """
-
     if seed is None:
         seed = utils.random_seed()
-
     data = interface.make_pystan_dict(
         x_data,
         y_data,
@@ -143,11 +141,8 @@ def _hmc_post_internal(  # pylint: disable=too-many-locals
     neff_pos = result.summary()['summary_colnames'].index('n_eff')
     rows = result.summary()['summary_rownames'].tolist()
     nrows = len(rows)
-
-    # retrieving the sampler parameters and the number of chains
     sampler_params = result.get_sampler_params(inc_warmup=False)
     nchains = len(sampler_params)
-
     raw_samples = result.extract(permuted=False)
     iterations = raw_samples.shape[0]
     rhat = {}
@@ -157,21 +152,17 @@ def _hmc_post_internal(  # pylint: disable=too-many-locals
     chain_id = np.empty(nchains * iterations)
     divergent = np.empty(nchains * iterations)
     excess_treedepth = np.empty(nchains * iterations)
-
     # get the rhat values and number of effective samples
     for param in rows:
         idx = rows.index(param)
         rhat[param] = result.summary()['summary'][:, rhat_pos][idx]
         n_eff[param] = result.summary()['summary'][:, neff_pos][idx]
-
         # slice out the samples
         for chain in range(nchains):
             idx_min = chain*iterations
             idx_max = (chain+1) * iterations
             samples[idx_min: idx_max, idx] = raw_samples[:, chain, idx]
-
     max_td = result.stan_args[0]['control']['max_treedepth']
-
     # extract the sampler parameters
     for chain in range(nchains):
         _params = sampler_params[chain]
@@ -181,12 +172,10 @@ def _hmc_post_internal(  # pylint: disable=too-many-locals
         excess_treedepth[idx_min: idx_max] = max_td - _params['treedepth__']
         divergent[idx_min: idx_max] = _params['divergent__']
         e_bfmi[chain] = calc_ebfmi(_params['energy__'])
-
     if permute:
         samples, chain_id, excess_treedepth, divergent = permute_aligned(
             (samples, chain_id, excess_treedepth, divergent), seed
         )
-
     info = {
         'method': 'hmc',
         'colnames': rows,
@@ -208,7 +197,10 @@ def assign_init(init: ta.InitTypes, chains: int) -> ta.PyStanInitTypes:
     # if init is not a dict, it is either a string, literal zero, a list of
     # either of the preceeding, or a list of dictionaries. Necessary to make
     # mypy aware of this explicitly
-    return cast(Union[List[ta.InitData], List[str], List[int], str, int], init)
+    return cast(
+        Union[List[ta.InitData], List[str], List[ta.Zero], str, ta.Zero],
+        init
+    )
 
 
 def same_lengths(arrays: Sequence[np.ndarray]) -> bool:

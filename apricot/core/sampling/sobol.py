@@ -314,7 +314,7 @@ def i4_sobol2(
     that need fixing. Variable "l" in original implementation prefixed "_" to
     silence "bad variable name" warnings.
     """
-    # pylint: disable=invalid-name, line-too-long
+    # pylint: disable=invalid-name, line-too-long, too-many-locals, too-many-statements, too-many-branches # noqa: E501
     generator_seed_save = -1
     generator_seed = int(np.floor(generator_seed))
     if generator_seed < 0:

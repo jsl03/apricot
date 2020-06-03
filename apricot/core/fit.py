@@ -11,6 +11,7 @@ from apricot.core import emulator
 from apricot.core.models import interface
 from apricot.core.models import glue
 from apricot.core.models import mle
+from apricot.core.models import cv
 from apricot.core.models import type_aliases as ta
 from apricot.core.logger import get_logger
 
@@ -72,6 +73,8 @@ def fit(  # pylint: disable=too-many-arguments
         * 'mle' Maximum Log Likelihood Estimation. Maximise the log *marginal*
             likelihood using numerical optimisation. Currently only valid with
             kernel = 'eq'.
+        * 'cv' Leave-one-out cross validated predictive log density
+            optimisation.
     init_method: {None, 'stable', 'zero', 'random', dict}
         Determines initialisation method. If method = 'hmc', fit_method
         determines the start points for each of the requested sample chains.
@@ -90,9 +93,11 @@ def fit(  # pylint: disable=too-many-arguments
                  1/10th of the marginal standard deviation.
             - Warping parameter are initialised to values corresponding to the
                  desired type of warping.
-        * 'zero' : initialise all parameters from zero.
-        * 'random' : initialise all parameters randomly on their support.
-        * dict : A custom initialisation value for each of the model's
+        * 'zero': initialise all parameters from zero on the unconstrained
+            support.
+        * 'random': initialise all parameters randomly on their support.
+        * 0: Equivalent to 'zero' (see above).
+        * dict: A custom initialisation value for each of the model's
             parameters.
     seed: {int32, None}
         Random seed.
@@ -144,6 +149,9 @@ def fit(  # pylint: disable=too-many-arguments
     if method.lower() == 'mle':
         return fit_mle(interface_instance, x_data, y_data, **kwargs)
 
+    if method.lower() == 'cv':
+        return fit_cv(interface_instance, x_data, y_data, **kwargs)
+
     raise ValueError("Unrecognised fit method: '{0}'.".format(method))
 
 
@@ -160,7 +168,7 @@ def fit_hmc(  # pylint: disable=too-many-arguments, too-many-locals
         max_treedepth: int = 10,
         seed: Optional[int] = None,
         permute: bool = True,
-        init_method: Union[dict, str, int] = 'stable',
+        init_method: ta.InitTypes = 'stable',
 ) -> emulator.Emulator:
     """ Run Stan's HMC algorithm for the provided model.
 
@@ -194,7 +202,7 @@ def fit_hmc(  # pylint: disable=too-many-arguments, too-many-locals
         Random seed.
     permute: bool, optional
         If True, permute the samples.
-    init_method: {'stable', 'zero', 'random', dict}
+    init_method: {'stable', 'zero', 'random', 0, dict}
         Determines initialisation method for each chain. Default = 'stable'.
         * 'stable': "stable" initialise parameters from data:
             - The marginal standard deviation is initialised to the sample
@@ -207,8 +215,10 @@ def fit_hmc(  # pylint: disable=too-many-arguments, too-many-locals
                  1/10th of the marginal standard deviation.
             - Warping parameter are initialised to values corresponding to the
                  desired type of warping.
-        * 'zero': initialise all parameters from zero.
+        * 'zero': initialise all parameters from zero on the unconstrained
+            support.
         * 'random': initialise all parameters randomly on their support.
+        * 0: Equivalent to 'zero' (see above).
         * dict: A custom initialisation value for each of the model's
             parameters.
 
@@ -284,8 +294,10 @@ def fit_map(  # pylint: disable=too-many-arguments
                  1/10th of the marginal standard deviation.
             - Warping parameter are initialised to values corresponding to the
                  desired type of warping.
-        * 'zero': initialise all parameters from zero.
+        * 'zero': initialise all parameters from zero on the unconstrained
+            support.
         * 'random': initialise all parameters randomly on their support.
+        * 0: Equivalent to 'zero' (see above).
         * dict: A custom initialisation value for each of the model's
             parameters.
     algorithm: str, optional
@@ -404,6 +416,111 @@ def fit_mle(  # pylint: disable=too-many-arguments, too-many-locals
     Emulator : apricot.emulator.Emulator instance
     """
     hyperparameters, info = mle.run_mle(
+        interface_instance,
+        x_data,
+        y_data,
+        jitter=jitter,
+        bounds=bounds,
+        ls_lower=ls_lower,
+        ls_upper=ls_upper,
+        sigma_lower=sigma_lower,
+        sigma_upper=sigma_upper,
+        amp_lower=amp_lower,
+        amp_upper=amp_upper,
+        grid_size=grid_size,
+        grid_method=grid_method,
+        grid_options=grid_options,
+        seed=seed,
+        callback=callback
+    )
+    emulator_instance = emulator.Emulator(
+        x_data,
+        y_data,
+        hyperparameters,
+        info=info,
+        kernel_type=interface_instance.kernel_type,
+        mean_function_type=interface_instance.mean_function_type,
+        jitter=jitter
+    )
+    return emulator_instance
+
+
+def fit_cv(  # pylint: disable=too-many-arguments, too-many-locals
+        interface_instance: interface.Interface,
+        x_data: np.ndarray,
+        y_data: np.ndarray,
+        jitter: float = 1e-10,
+        bounds: Optional[ta.Bounds] = None,
+        ls_lower: float = 0.05,
+        ls_upper: float = 1.0,
+        sigma_lower: float = 0.0,
+        sigma_upper: Optional[float] = None,
+        amp_lower: float = 0.0,
+        amp_upper: float = 1.0,
+        grid_size: int = 5000,
+        grid_method: str = 'sobol',
+        grid_options: Optional[dict] = None,
+        seed: Optional[int] = None,
+        callback: Optional[ta.CallbackFunction] = None,
+) -> emulator.Emulator:
+    """ Identify model hyperparameters using maximum leave-one-out cross
+    validated log predictive density.
+
+    Parameters
+    ----------
+    interface_instance: intstance of apricot.core.models.interface.Interface
+        Interface to the model who's hyperparameters should be identified.
+    x_data: ndarray
+        (n, d) array of n sample points in d dimensions.
+    y_data: ndarray
+        (n) array of n responses corresponding to the rows of x.
+    jitter: float, optional
+        Magnitude of stability jitter to be added to the leading diagonal of
+        the sample covariance matrix.
+    bounds: List of tuple, optional
+        List of (lower, upper) bounds for the preliminary grid search for each
+        hyperparameter in the following order: signal amplitude (marginal
+        standard deviation), (optionally) noise variance (if present),
+        anisotropic lengthscales. For fixed noise models, this is:
+        [amp, ls_1, ..., ls_d], and if inferring the noise standard deviation,
+        this is [amp, xi, ls_1, ..., ls_d]. If not provided, the grid search
+        bounds will be set to "sensible" defaults (see below). Default = None.
+    ls_lower: float, optional
+        Grid search lower bound for anisotropic lengthscales. Default = 0.05.
+    ls_upper: float, optional
+        Grid search upper bound for anisotropic lengthscales. Default = 1.
+    sigma_lower: float, optional
+        Grid search lower bound for noise standard deviation. Default = 0
+    sigma_upper: {None, float}, optional
+        Grid search upper bound for noise standard deviation. If None and
+        infer_noise is True, sigma_upper is equal to 1/10 of the
+        sample standard deviation for function observations, that is:
+        sigma_upper = np.std(y) / 10. Default = None.
+    amp_lower: float, optional
+        Grid search lower bound for marginal standard deviation. Default = 0.
+    amp_upper: float, optional
+        Grid search upper bound for marginal standard deviation. Default = 1.
+    grid_size: int, optional
+        Number of points to use for the preliminary grid search. Default =
+        5000. For large sample sample sizes, this can be reduced.
+    grid_method: str, optional
+        String specifying which method to use to generate the grid points.
+        Valid options are compatible with apricot.sample_hypercube. Default =
+        'sobol'.
+    grid_options: dict, optional
+        Additional options to pass to the chosen grid generating method.
+        Default = None.
+    seed: int32, optional
+        Random seed. If not provided, one will be generated. Default = None.
+    callback: ndarray -> Any
+        Callback function. Recieves the parameter vector queried by the
+        optimisation algorithm at each iteration. Used primarily for debugging.
+
+    Returns
+    -------
+    Emulator : apricot.emulator.Emulator instance
+    """
+    hyperparameters, info = cv.run_cv(
         interface_instance,
         x_data,
         y_data,

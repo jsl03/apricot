@@ -1,6 +1,7 @@
 # This file is licensed under Version 3.0 of the GNU General Public
 # License. See LICENSE for a text of the license.
 # ------------------------------------------------------------------------------
+import numbers
 from typing import Optional, Union, Dict, Any, Mapping
 import numpy as np  # type: ignore
 from apricot.core.models import type_aliases as ta
@@ -140,8 +141,10 @@ def get_init(
                  1/10th of the marginal standard deviation.
             - Warping parameter are initialised to values corresponding to the
                  desired type of warping.
-        * 'zero' : initialise all parameters from zero.
+        * 'zero' : initialise all parameters from zero on the unconstrained
+            support.
         * 'random' : initialise all parameters randomly on their support.
+        * 0: Equivalent to 'zero' (see above).
         * dict : A custom initialisation value for each of the model's
             parameters.
 
@@ -157,6 +160,14 @@ def get_init(
     """
     if init is None:
         init = 'stable'
+
+    if isinstance(init, numbers.Integral):
+        LOGGER.debug('Initialisation: Integral type.')
+        if init == 0:
+            LOGGER.debug('Parsed initialisation value 0 as "zero".')
+            init = 'zero'
+        msg = 'Arbitrary scalar initialisation is not supported.'
+        raise NotImplementedError(msg)
 
     # custom init, let pyStan raise its own exceptions if necessary
     if isinstance(init, dict):
@@ -224,25 +235,25 @@ def init_from_data(
     return init
 
 
-def init_from_str(init_str: str) -> Union[str, int]:
+def init_from_str(init_str: str) -> Union[str, ta.Zero]:
     """
 
     Parameters
     ----------
-    init_str : str
+    init_str: str
         Requested (Stan compatible) initialisation method.
 
     Returns
     -------
-    init_method : str, int
-        Either 'random' or 0.
+    init_method: str, 0
+        Either 'random', 'zero', or 0.
 
     Raises
     ------
     ValueError
        If init_str is not in {'random', '0', 'zero'}.
     """
-    options: Mapping[str, Union[str, int]] = {
+    options: Mapping[str, Union[str, ta.Zero]] = {
         'random': 'random',
         '0': 0,
         'zero': 0,

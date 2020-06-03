@@ -16,6 +16,7 @@ def ls_inv_gamma_prior(
         max_attempts: int = 3,
         seed: Optional[int] = None,
 ) -> Tuple[np.ndarray, np.ndarray]:
+    # pylint: disable=too-many-arguments, too-many-locals
     """ Inverse Gamma lengthscale hyperprior.
 
     Calculates the parameters of an inverse gamma distribution, ls_alpha and
@@ -206,7 +207,7 @@ def solve_inv_gamma(
         max_attempts: int = 3,
         seed: Optional[int] = None,
 ) -> Tuple[float, float]:
-    # pylint: disable= too-many-arguments
+    # pylint: disable= too-many-arguments, too-many-locals, no-member
     """ Solve system of equations to find appropriate inverse gamma parameters.
 
     Aims to identify parameters alpha and beta such that:
@@ -313,7 +314,7 @@ def parse_option(
         lower_tol = 0.01
         upper_tol = 0.01
     elif option.lower() == 'linear':
-        lower_bound = 1.0
+        lower_bound = 0.2
         upper_bound = 5.0
         lower_tol = 0.01
         upper_tol = 0.01

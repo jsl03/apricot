@@ -1,8 +1,11 @@
-# This file is licensed under Version 3.0 of the GNU General Public
-# License. See LICENSE for a text of the license.
-# ------------------------------------------------------------------------------
+"""
+This file is licensed under Version 3.0 of the GNU General Public
+License. See LICENSE for a text of the license.
+"""
+import numbers
 from typing import Union, Optional, Tuple, Mapping
 from apricot.core.logger import get_logger
+from apricot.core.models import type_aliases as ta
 from apricot.core.models.build import mean_parts
 from apricot.core.models.build import noise_parts
 from apricot.core.models.build import kernel_parts
@@ -138,12 +141,12 @@ def parse_noise_internal(
         the additive Gaussian noise to include in the model. If noise_option =
         "infer", value is None.
     """
-    if isinstance(noise, float):
-        return 'deterministic', noise
+    if isinstance(noise, numbers.Integral):
+        return 'deterministic', float(noise)
     return 'infer', None
 
 
-def parse_mean(mean_type: Optional[Union[str, int]]) -> str:
+def parse_mean(mean_type: Optional[Union[str, ta.Zero]]) -> str:
     """ Parse requested mean function option.
 
     Parameters
@@ -193,7 +196,7 @@ def parse_mean_str(as_str: str) -> str:
     raise ValueError(msg)
 
 
-def parse_mean_other(mean_type: int) -> str:
+def parse_mean_other(mean_type: ta.Zero) -> str:
     """ Parse mean type represented as an integer.
 
     Realistically, mean_type must be literal 0 for this function not to raise
@@ -214,8 +217,9 @@ def parse_mean_other(mean_type: int) -> str:
     ValueError
         If mean_type cannot be matched to one of the available options.
     """
-    if mean_type == 0:
-        return 'zero'
+    if isinstance(mean_type, numbers.Integral):
+        if mean_type == 0:
+            return 'zero'
     msg = ("mean function must be one of {0}".format(mean_parts.AVAILABLE))
     raise ValueError(msg)
 

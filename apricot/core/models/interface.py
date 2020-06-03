@@ -28,7 +28,7 @@ class Interface:
 
         Parameters
         ----------
-        kernel : str
+        kernel: str
             The desired covariance kernel. One of:
             * 'eq': Exponentiated quadratic.
             * 'eq_flat': Exponentiated quadratic with flat (i.e., uniform)
@@ -37,18 +37,18 @@ class Interface:
             * 'm52': Matern kernel with nu = 5/2.
             * 'm32': Matern kernel with nu = 3/2.
             * 'rq': Rational quadratic kernel.
-        mean_function : str, optional
+        mean_function: str, optional
             The desired mean function. One of:
             * 0: Zero mean.
             * 'zero': see above.
             * 'linear: linear mean, i.e. mu = beta * x
-        noise : str, optional
+        noise: str, optional
             The desired noise model. If noise is a floating point number,
             additive Gaussian (white) noise with standard deviation equivalent
             to noise will be added to the leading diagonal of the sample
             covariance matrix. If noise = 'infer', the standard deviation of
             additive Gaussian noise will be inferred as a model hyperparameter.
-        warping : {None, False, str}, optional
+        warping: {None, False, str}, optional
             If None or False, no input warping will be applied. If warping =
             'linear' or warping = 'sigmoid', input warping using the Beta
             distribution CDF will be applied as described in [1]_. Prior
@@ -58,7 +58,7 @@ class Interface:
 
         Returns
         -------
-        pyStan_interface : apricot.core.Interface instance
+        pyStan_interface: apricot.core.Interface instance
 
         References
         ----------
@@ -91,7 +91,6 @@ class Interface:
         self.sigma = [a[0] for a in noise_part.args]
 
         # dimensions of the required arguments
-        # TODO: attributes probably redundant as of 01.01.2020
         self._theta_dims = [a[1] for a in kernel_part.args]
         self._beta_dims = [a[1] for a in mean_part.args]
         self._sigma_dims = [a[1] for a in noise_part.args]
