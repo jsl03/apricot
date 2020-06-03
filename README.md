@@ -60,11 +60,21 @@ dependencies which provide extra visualisation capability.
 
 ## Installation
 
-The package currently only works on Linux. 
+The package currently only works "as is" on Linux. It can be installed using `pip` from inside the apricot source directory:
 
-It can be installed using `pip3` from inside the apricot source directory:
+`pip install --user .`
 
-`pip3 install --user .`
+Please note that the package assumes the `Eigen` headers are located in `usr/include/eigen3`. Ability to change this location is planned for a future release. Those needing to change the default `Eigen` header location should modify the `ext_modules` variable inside `setup.py` to include the location of the `Eigen` headers.
+
+### A (Very) Brief Troubleshooting Guide For Windows Users
+
+Windows users should:
+
+* Modify `setup.py` so that the C++ files will compile correctly.
+
+* Modify the paths inside  `apricot/core/models/model_cache` to support Windows path formats.
+
+Please note that the package has **not** be tested on Windows at all.
 
 ## Acknowledgements
 
