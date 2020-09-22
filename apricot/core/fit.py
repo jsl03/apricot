@@ -1,5 +1,5 @@
 """
-DOCSTRING
+Methods for fitting Emulators to data.
 
 -------------------------------------------------------------------------------
 This file is licensed under Version 3.0 of the GNU General Public
