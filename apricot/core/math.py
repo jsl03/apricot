@@ -1,6 +1,6 @@
 """
-
-DOCSTRING
+Assorted mathemtical functions and utilities that don't fit anywhere more
+specific.
 
 -------------------------------------------------------------------------------
 This file is licensed under Version 3.0 of the GNU General Public

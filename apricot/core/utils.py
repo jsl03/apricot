@@ -1,6 +1,11 @@
-# This file is licensed under Version 3.0 of the GNU General Public
-# License. See LICENSE for a text of the license.
-# ------------------------------------------------------------------------------
+"""
+Assorted utility functions that don't belong anywhere more specific.
+Note that mathematical functions should go in "math.py"
+
+------------------------------------------------------------------------------
+This file is licensed under Version 3.0 of the GNU General Public
+License. See LICENSE for a text of the license.
+"""
 from typing import Iterable, List, Any, Optional, Union, Callable
 import os
 import itertools

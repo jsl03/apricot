@@ -1,11 +1,11 @@
 """
+Utilities for running hyperparameter optimisation via CV or MLE.
 
- Docstring
-
-
+-------------------------------------------------------------------------------
 This file is licensed under Version 3.0 of the GNU General Public
 License. See LICENSE for a text of the license.
 """
+
 from typing import Optional, Mapping, Any, Tuple
 import numpy as np  # type: ignore
 from apricot.core import sampling

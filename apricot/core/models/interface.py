@@ -1,6 +1,12 @@
-# This file is licensed under Version 3.0 of the GNU General Public
-# License. See LICENSE for a text of the license.
-# ------------------------------------------------------------------------------
+"""
+Code for the primary interface between the user, apricot models, and pyStan.
+
+-------------------------------------------------------------------------------
+This file is licensed under Version 3.0 of the GNU General Public
+License. See LICENSE for a text of the license.
+"""
+
+
 from typing import Optional, Union, Dict, Any, Tuple
 import numpy as np  # type: ignore
 from apricot.core import utils

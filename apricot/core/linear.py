@@ -1,5 +1,10 @@
 """
-DOCSTRING
+Experimental multi-linear regression module.
+
+This module is unfinished.
+
+TODO:
+Complete function docstrings.
 
 -------------------------------------------------------------------------------
 This file is licensed under Version 3.0 of the GNU General Public

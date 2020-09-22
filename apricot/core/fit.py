@@ -1,5 +1,5 @@
 """
-Methods for fitting Emulators to data.
+Python interfaces to the fit methods.
 
 -------------------------------------------------------------------------------
 This file is licensed under Version 3.0 of the GNU General Public

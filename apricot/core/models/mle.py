@@ -1,11 +1,11 @@
 """
+Code for fitting a model using Maximum Likelihood Estimation (flat hyperpriors)
 
-Docstring
-
-
+-------------------------------------------------------------------------------
 This file is licensed under Version 3.0 of the GNU General Public
 License. See LICENSE for a text of the license.
 """
+
 from typing import Tuple, Optional, Dict, Any, Mapping, cast
 import numpy as np  # type: ignore
 from scipy import optimize  # type: ignore

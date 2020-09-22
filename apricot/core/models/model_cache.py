@@ -1,6 +1,12 @@
-# This file is licensed under Version 3.0 of the GNU General Public
-# License. See LICENSE for a text of the license.
-# ------------------------------------------------------------------------------
+"""
+Code for creating, accessing, and writing 'Pickled' pyStan models to the model
+cache.
+
+-------------------------------------------------------------------------------
+This file is licensed under Version 3.0 of the GNU General Public
+License. See LICENSE for a text of the license.
+"""
+
 import os
 import pickle
 from typing import Callable, Any

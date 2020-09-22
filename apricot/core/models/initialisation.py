@@ -1,6 +1,12 @@
-# This file is licensed under Version 3.0 of the GNU General Public
-# License. See LICENSE for a text of the license.
-# ------------------------------------------------------------------------------
+"""
+Helper functions for initialising Stan with the appropriate options.
+
+-------------------------------------------------------------------------------
+This file is licensed under Version 3.0 of the GNU General Public
+License. See LICENSE for a text of the license.
+"""
+
+
 import numbers
 from typing import Optional, Union, Dict, Any, Mapping
 import numpy as np  # type: ignore

@@ -1,6 +1,11 @@
-# This file is licensed under Version 3.0 of the GNU General Public
-# License. See LICENSE for a text of the license.
-# ------------------------------------------------------------------------------
+"""
+Code for interfacing either pystan sample results (HMC) or optimisation
+routine results (MAP) with Emulator class objects.
+
+-------------------------------------------------------------------------------
+This file is licensed under Version 3.0 of the GNU General Public
+License. See LICENSE for a text of the license.
+"""
 from typing import List, Optional, Dict, Any
 import re
 import numpy as np  # type: ignore

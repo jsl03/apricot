@@ -1,6 +1,10 @@
-# This file is licensed under Version 3.0 of the GNU General Public
-# License. See LICENSE for a text of the license.
-# ------------------------------------------------------------------------------
+"""
+Visualisation utilities for the Emulator class.
+
+-------------------------------------------------------------------------------
+This file is licensed under Version 3.0 of the GNU General Public
+License. See LICENSE for a text of the license.
+"""
 import re
 from typing import Optional, Tuple, Any, Dict
 import numpy as np  # type: ignore
@@ -131,4 +135,3 @@ def plot_divergences(
     ax.set_xlabel('parameter')
     ax.set_ylabel('normalised value')
     plt.show()
-

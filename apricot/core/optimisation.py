@@ -1,6 +1,10 @@
-# This file is licensed under Version 3.0 of the GNU General Public
-# License. See LICENSE for a text of the license.
-# ------------------------------------------------------------------------------
+"""
+Optimisation routines for the Emulator class and associated utilities.
+
+-------------------------------------------------------------------------------
+This file is licensed under Version 3.0 of the GNU General Public
+License. See LICENSE for a text of the license.
+"""
 from typing import Optional, Mapping, Any
 import numpy as np  # type: ignore
 from scipy.optimize import minimize  # type: ignore

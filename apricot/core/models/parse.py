@@ -1,7 +1,12 @@
 """
+Code for parsing option strings (user input) into (internally recognised)
+apricot model options.
+
+-------------------------------------------------------------------------------
 This file is licensed under Version 3.0 of the GNU General Public
 License. See LICENSE for a text of the license.
 """
+
 import numbers
 from typing import Union, Optional, Tuple, Mapping
 from apricot.core.logger import get_logger

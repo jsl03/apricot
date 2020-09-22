@@ -1,6 +1,10 @@
-# This file is licensed under Version 3.0 of the GNU General Public
-# License. See LICENSE for a text of the license.
-# ------------------------------------------------------------------------------
+"""
+Code for fitting a model using Hamiltonian Monte-Carlo.
+
+-------------------------------------------------------------------------------
+This file is licensed under Version 3.0 of the GNU General Public
+License. See LICENSE for a text of the license.
+"""
 from typing import cast, Optional, Union, Dict, Any, List, Sequence, Tuple
 import numpy as np  # type: ignore
 from apricot.core import utils
