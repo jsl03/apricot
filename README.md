@@ -51,11 +51,9 @@ By adding more dimensions (informally, more axes that points can differ on), we 
 
 #### But I want to use GP Regression for precisely those problems!
 
-You're not alone! This is an area of active research. 
+You're not alone! This is an area of active research. For currently existing solutions I suggest taking a look at [GPyTorch](https://gpytorch.ai/) or [GPflow](https://github.com/GPflow/GPflow).
 
-For currently existing solutions I suggest taking a look at [GPyTorch](https://gpytorch.ai/) or [GPflow](https://github.com/GPflow/GPflow).
-
-For a good review of the literature, take a look at [this paper](https://papers.nips.cc/paper/6477-understanding-probabilistic-sparse-gaussian-process-approximations.pdf).
+For a good introduction to the literature, I like [this paper](https://papers.nips.cc/paper/6477-understanding-probabilistic-sparse-gaussian-process-approximations.pdf) and [this paper](https://arxiv.org/pdf/1511.01870.pdf).
 
 ## Requirements
 * [SciPy](https://github.com/scipy/scipy) and [NumPy](https://github.com/numpy/numpy)
