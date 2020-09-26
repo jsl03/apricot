@@ -41,17 +41,20 @@ in up to a moderate number of input dimensions
 The "model fit" stage of "vanilla" GP regression, as implemented by `apricot`, involves 
 computing a pairwise calculation between each sample from the index (input space), 
 followed by subsequent inversion of this matrix. Assuming a sample size of `N`, 
-this implies a time complexity of `O(N^3)`, which becomes prohibitive pretty quickly!
+this implies a time complexity of `O(N^3)`, which becomes prohibitive quite quickly as `N` gets larger without employing some special techniques.
+For large `N`, storage of these matrices is also an issue.
+
+In practical terms, this means the fit procedure will become so slow it's not worth using.
 
 #### Why less than about 20 input dimensions?
 
-Scaling with regards to the number of input *dimensions*, `D`, is a little more nuanced. [Michael Betancourt does a far better job of explaining this "curse of dimensionality" in the context of GP regression than I could](https://betanalpha.github.io/assets/case_studies/gp_part3/part3.html#6_the_inevitable_curse_of_dimensionality),  but the gist of it is that GP regression works by assessing some measure of "distance" (in scare quotes because this need not be a distance in the conventional sense) between points, and then determining how similar two function values ought to be based on this (with points close together typically having similar values). 
+Scaling with regards to the number of input *dimensions*, `D`, is a little more nuanced. [Michael Betancourt does a far better job of explaining this "curse of dimensionality" in the context of GP regression than I could](https://betanalpha.github.io/assets/case_studies/gp_part3/part3.html#6_the_inevitable_curse_of_dimensionality),  but the gist of it is that GP regression works by assessing some measure of "distance" (in scare quotes because this need not be a distance in the conventional sense) between points, and then determining how similar two function values ought to be based on this (with points "close together" typically having similar values). 
 
-By adding more dimensions (informally, more axes that points can differ on), we necessarily "spread out" the data more, and hence need more points to provide an  equivalent amount of coverage. While it is a *little* more complicated than this, this limitation interacts with the above issue (scaling with `N`) in that we start to require more sample points than is computationally sensible if `D` becomes large.
+By adding more dimensions (informally, more axes of comparison that points can differ on), we necessarily "spread out" the data more, and hence need more points to provide an  equivalent amount of coverage in terms of the "distance" mentioned in the previous paragraph. While it is a *little* more complicated than this, this limitation interacts with the first issue (scaling with `N`) in that we start to require more sample points than is computationally sensible if `D` becomes large.
 
 #### But I want to use GP Regression for precisely those problems!
 
-You're not alone! This is an area of active research. For currently existing solutions I suggest taking a look at [GPyTorch](https://gpytorch.ai/) or [GPflow](https://github.com/GPflow/GPflow).
+You're not alone! This is an area of active research. For currently existing solutions I suggest taking a look at the sparse and/or "special structure" GP models in either [GPyTorch](https://gpytorch.ai/) or [GPflow](https://github.com/GPflow/GPflow).
 
 For a good introduction to the literature (and so you can understand the options presented by the above two packages), 
 I would suggest starting with these two papers:
