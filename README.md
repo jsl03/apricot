@@ -53,7 +53,11 @@ By adding more dimensions (informally, more axes that points can differ on), we 
 
 You're not alone! This is an area of active research. For currently existing solutions I suggest taking a look at [GPyTorch](https://gpytorch.ai/) or [GPflow](https://github.com/GPflow/GPflow).
 
-For a good introduction to the literature, I like [this paper](https://papers.nips.cc/paper/6477-understanding-probabilistic-sparse-gaussian-process-approximations.pdf) and [this paper](https://arxiv.org/pdf/1511.01870.pdf).
+For a good introduction to the literature, I like these two papers: 
+
+* Bauer M, van der Wilk M, Rasmussen CE. [Understanding Probabilistic Sparse Gaussian Process Approximations](https://papers.nips.cc/paper/6477-understanding-probabilistic-sparse-gaussian-process-approximations.pdf)
+
+* Wilson AG, Dann C, Nickisch H. [Thoughts on Massively Scalable Gaussian Processes](https://arxiv.org/pdf/1511.01870.pdf).
 
 ## Requirements
 * [SciPy](https://github.com/scipy/scipy) and [NumPy](https://github.com/numpy/numpy)
@@ -113,7 +117,7 @@ derived from [Sobol](https://people.sc.fsu.edu/~jburkardt/py_src/sobol/sobol.htm
 
 * **Upper Confidence Bound** as implemented in the `Emulator` class is credited to: Srinivas N, Krause A, Kakade SM, Seeger M. Gaussian process optimization in the bandit setting: No regret and experimental design. arXiv preprint arXiv:0912.3995. 2009 Dec 21.
 
-* **Input Warping For Non-Stationary GP Regression** in credited to: Snoek J, Swersky K, Zemel R, Adams R. Input warping for Bayesian optimization of non-stationary functions. InInternational Conference on Machine Learning 2014 Jan 27 (pp. 1674-1682).
+* **Input Warping For Non-Stationary GP Regression** in credited to: Snoek J, Swersky K, Zemel R, Adams R. Input warping for Bayesian optimization of non-stationary functions. International Conference on Machine Learning 2014 Jan 27 (pp. 1674-1682).
 
 ## Similar and Related Packages
 
