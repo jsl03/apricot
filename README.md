@@ -53,11 +53,11 @@ By adding more dimensions (informally, more axes that points can differ on), we 
 
 You're not alone! This is an area of active research. For currently existing solutions I suggest taking a look at [GPyTorch](https://gpytorch.ai/) or [GPflow](https://github.com/GPflow/GPflow).
 
-For a good introduction to the literature, I like these two papers: 
+For a good introduction to the literature, I would suggest starting with these two papers:
 
-* Bauer M, van der Wilk M, Rasmussen CE. [Understanding Probabilistic Sparse Gaussian Process Approximations](https://papers.nips.cc/paper/6477-understanding-probabilistic-sparse-gaussian-process-approximations.pdf)
+* [Understanding Probabilistic Sparse Gaussian Process Approximations](https://papers.nips.cc/paper/6477-understanding-probabilistic-sparse-gaussian-process-approximations.pdf), by Bauer, van der Wilk, and Rasmussen. 
 
-* Wilson AG, Dann C, Nickisch H. [Thoughts on Massively Scalable Gaussian Processes](https://arxiv.org/pdf/1511.01870.pdf).
+* [Thoughts on Massively Scalable Gaussian Processes](https://arxiv.org/pdf/1511.01870.pdf), by Wilson, Dann, and Nickisch. 
 
 ## Requirements
 * [SciPy](https://github.com/scipy/scipy) and [NumPy](https://github.com/numpy/numpy)
