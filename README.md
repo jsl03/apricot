@@ -41,14 +41,21 @@ in up to a moderate number of input dimensions
 The "model fit" stage of "vanilla" GP regression, as implemented by `apricot`, involves 
 computing a pairwise calculation between each sample from the index (input space), 
 followed by subsequent inversion of this matrix. Assuming a sample size of `N`, 
-this implies a time complexity of `O(N^3)` and a memory complexity of 
-`O(2N)`, so for large `N`, this gets prohibitive pretty quickly!
+this implies a time complexity of `O(N^3)`, which becomes prohibitive pretty quickly!
 
 #### Why less than about 20 input dimensions?
 
 Scaling with regards to the number of input *dimensions*, `D`, is a little more nuanced. [Michael Betancourt does a far better job of explaining this "curse of dimensionality" in the context of GP regression than I could](https://betanalpha.github.io/assets/case_studies/gp_part3/part3.html#6_the_inevitable_curse_of_dimensionality),  but the gist of it is that GP regression works by assessing some measure of "distance" (in scare quotes because this need not be a distance in the conventional sense) between points, and then determining how similar two function values ought to be based on this (with points close together typically having similar values). 
 
 By adding more dimensions (informally, more axes that points can differ on), we necessarily "spread out" the data more, and hence need more points to provide an  equivalent amount of coverage. While it is a *little* more complicated than this, this limitation interacts with the above issue (scaling with `N`) in that we start to require more sample points than is computationally sensible if `D` becomes large.
+
+#### But I want to use GP Regression for precisely those problems!
+
+You're not alone! This is an area of active research. 
+
+For currently existing solutions I suggest taking a look at [GPyTorch](https://gpytorch.ai/) or [GPflow](https://github.com/GPflow/GPflow).
+
+For a good review of the literature, take a look at [this paper](https://papers.nips.cc/paper/6477-understanding-probabilistic-sparse-gaussian-process-approximations.pdf).
 
 ## Requirements
 * [SciPy](https://github.com/scipy/scipy) and [NumPy](https://github.com/numpy/numpy)
