@@ -36,10 +36,15 @@ inputs and outputs.
 in up to a moderate number of input dimensions 
 (less than around 20).
 
-GP regression can be performed with larger sample
-sizes by introducing some approximations, though
-these are currently not supported. 
+#### In a little more detail...
 
+The "model fit" stage of "vanilla" GP regression, as implemented by `apricot`, involves 
+computing a pairwise calculation between each sample from the index (input space), 
+followed by subsequent inversion of this matrix. Assuming a sample size of $N$, 
+this implies a time complexity of $\mathcal{O}(N^3)$ and a memory complexity of 
+$\mathcal{O}(2N)$, so for large $N$, this gets prohibitive pretty quickly!
+
+Scaling with regards to the number of input *dimensions*, $D$, is a little more nuanced. [Michael Betancourt does a far better job of explaining this "curse of dimensionality" in the context of GP regression than I could](https://betanalpha.github.io/assets/case_studies/gp_part3/part3.html#6_the_inevitable_curse_of_dimensionality),  but the gist of it is that GP regression works by assessing some measure of "distance" (in scare quotes because this need not be a distance in the conventional sense) between points, and then determining how similar two function values ought to be based on this (with points close together typically having similar values). By adding more dimensions (informally, more axes that points can differ on), we necessarily "spread out" the data more, and hence need more points to provide an  equivalent amount of coverage. While it is a *little* more complicated than this, this limitation interacts with the above issue (scaling with $N$) in that we start to require more sample points than is computationally sensible if $D$ becomes large.
 
 ## Requirements
 * [SciPy](https://github.com/scipy/scipy) and [NumPy](https://github.com/numpy/numpy)
@@ -66,7 +71,7 @@ The package currently only works "as is" on Linux. It can be installed using `pi
 
 Please note that the package assumes the `Eigen` headers are located in `usr/include/eigen3`. Ability to change this location is planned for a future release. Those needing to change the default `Eigen` header location should modify the `ext_modules` variable inside `setup.py` to include the location of the `Eigen` headers.
 
-### A (Very) Brief Troubleshooting Guide For Windows Users
+### A (Very) Brief Troubleshooting Guide For Prospective Windows Users
 
 Windows users should:
 
