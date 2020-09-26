@@ -40,9 +40,9 @@ in up to a moderate number of input dimensions
 
 The "model fit" stage of "vanilla" GP regression, as implemented by `apricot`, involves 
 computing a pairwise calculation between each sample from the index (input space), 
-followed by subsequent inversion of this matrix. Assuming a sample size of $N$, 
-this implies a time complexity of $O(N^3)$ and a memory complexity of 
-$O(2N)$, so for large $N$, this gets prohibitive pretty quickly!
+followed by subsequent inversion of this matrix. Assuming a sample size of `N`, 
+this implies a time complexity of `O(N^3)` and a memory complexity of 
+`O(2N)`, so for large `N`, this gets prohibitive pretty quickly!
 
 #### Why less than about 20 input dimensions?
 
