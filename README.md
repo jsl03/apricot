@@ -125,7 +125,7 @@ derived from [Sobol](https://people.sc.fsu.edu/~jburkardt/py_src/sobol/sobol.htm
 * [GPy](https://github.com/SheffieldML/GPy) is a feature-rich package for performing GP regression in python.
 * [PyMC3](https://github.com/pymc-devs/pymc3) provides general probabilistic modelling capabilities in python, including GP regression.
 * [pyStan](https://github.com/stan-dev/pystan) is the python interface to the probabilistic programming language [Stan](https://mc-stan.org/).
-* [GPyTorch](https://gpytorch.ai/) provides "a highly efficient and modular implementation of GPs", implemented in [PyTorch](https://pytorch.org/).
+* [GPyTorch](https://gpytorch.ai/) provides "a highly efficient and modular implementation" of GP regression, implemented in [PyTorch](https://pytorch.org/).
 * [GPflow](https://github.com/GPflow/GPflow) offers similar features to GPyTorch, using [TensorFlow](https://tensorflow.org/) instead.
 
 
