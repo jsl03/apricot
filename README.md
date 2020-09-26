@@ -53,7 +53,8 @@ By adding more dimensions (informally, more axes that points can differ on), we 
 
 You're not alone! This is an area of active research. For currently existing solutions I suggest taking a look at [GPyTorch](https://gpytorch.ai/) or [GPflow](https://github.com/GPflow/GPflow).
 
-For a good introduction to the literature, I would suggest starting with these two papers:
+For a good introduction to the literature (and so you can understand the options presented by the above two packages), 
+I would suggest starting with these two papers:
 
 * [Understanding Probabilistic Sparse Gaussian Process Approximations](https://papers.nips.cc/paper/6477-understanding-probabilistic-sparse-gaussian-process-approximations.pdf), by Bauer, van der Wilk, and Rasmussen. 
 
@@ -82,17 +83,17 @@ The package currently only works "as is" on Linux. It can be installed using `pi
 
 `pip install --user .`
 
-Please note that the package assumes the `Eigen` headers are located in `usr/include/eigen3`. Ability to change this location is planned for a future release. Those needing to change the default `Eigen` header location should modify the `ext_modules` variable inside `setup.py` to include the location of the `Eigen` headers.
+Please note that the package assumes the `Eigen` headers are located in `usr/include/eigen3`. Ability to change this location is planned for a future release. Those needing to change the default `Eigen` header location should modify the `ext_modules` variable inside `setup.py` to include the proper location of the `Eigen` headers.
 
-### A (Very) Brief Troubleshooting Guide For Prospective Windows Users
+### A (Very) Brief Troubleshooting Guide For Prospective Windows or OSX Users
 
 Windows users should:
 
 * Modify `setup.py` so that the C++ files will compile correctly.
 
-* Modify the paths inside  `apricot/core/models/model_cache` to support Windows path formats.
+* Modify the paths inside  `apricot/core/models/model_cache` to support the correct path formats.
 
-Please note that the package has **not** be tested on Windows at all.
+Please note that the package has **not** be tested on Windows or OSX at all.
 
 ## Acknowledgements
 
@@ -124,6 +125,9 @@ derived from [Sobol](https://people.sc.fsu.edu/~jburkardt/py_src/sobol/sobol.htm
 * [GPy](https://github.com/SheffieldML/GPy) is a feature-rich package for performing GP regression in python.
 * [PyMC3](https://github.com/pymc-devs/pymc3) provides general probabilistic modelling capabilities in python, including GP regression.
 * [pyStan](https://github.com/stan-dev/pystan) is the python interface to the probabilistic programming language [Stan](https://mc-stan.org/).
+* [GPyTorch](https://gpytorch.ai/) provides "a highly efficient and modular implementation of GPs", implemented in [PyTorch](https://pytorch.org/).
+* [GPflow](https://github.com/GPflow/GPflow) offers similar features to GPyTorch, using [TensorFlow](https://tensorflow.org/) instead.
+
 
 ## License
 
