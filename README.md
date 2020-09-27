@@ -34,7 +34,43 @@ inputs and outputs.
 **apricot** works best at low sample sizes 
 (datasets of less than a few hundred points) 
 in up to a moderate number of input dimensions 
-(less than around 20).
+(less than around 20). Please see the limitations section below for more information.
+
+## Requirements
+* [SciPy](https://github.com/scipy/scipy) and [NumPy](https://github.com/numpy/numpy)
+
+* [pyStan](https://github.com/stan-dev/pystan)
+
+* [pybind11](https://github.com/pybind/pybind11)>=2.2
+
+* The [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page) header
+  library (assumed to be in `/usr/include/eigen3`).
+
+### Optional Extras
+
+Both [matplotlib](https://github.com/matplotlib/matplotlib) 
+and [seaborn](https://github.com/mwaskom/seaborn) are optional
+dependencies which provide extra visualisation capability.
+
+## Installation
+
+The package currently only works "as is" on Linux. It can be installed using `pip` from inside the apricot source directory:
+
+`pip install --user .`
+
+Please note that the package assumes the `Eigen` headers are located in `usr/include/eigen3`. Ability to change this location is planned for a future release. Those needing to change the default `Eigen` header location should modify the `ext_modules` variable inside `setup.py` to include the proper location of the `Eigen` headers.
+
+### A (Very) Brief Troubleshooting Guide For Prospective Windows or OSX Users
+
+Windows users should:
+
+* Modify `setup.py` so that the C++ files will compile correctly.
+
+* Modify the paths inside  `apricot/core/models/model_cache` to support the correct path formats.
+
+Please note that the package has **not** be tested on Windows or OSX at all.
+
+## Limitations
 
 #### Why less than a few hundred points?
 
@@ -54,7 +90,7 @@ By adding more dimensions (informally, more axes of comparison that points can d
 
 #### But I want to use GP Regression for precisely those problems!
 
-You're not alone! This is an area of active research. For currently existing solutions I suggest taking a look at the sparse and/or "special structure" GP models in either [GPyTorch](https://gpytorch.ai/) or [GPflow](https://github.com/GPflow/GPflow).
+You're not alone! This is an area of active research. For currently existing solutions I suggest taking a look at the low-rank (or "sparse") and/or "special structure" GP models in either [GPyTorch](https://gpytorch.ai/) or [GPflow](https://github.com/GPflow/GPflow).
 
 For a good introduction to the literature (and so you can understand the options presented by the above two packages), 
 I would suggest starting with these two papers:
@@ -62,41 +98,6 @@ I would suggest starting with these two papers:
 * [Understanding Probabilistic Sparse Gaussian Process Approximations](https://papers.nips.cc/paper/6477-understanding-probabilistic-sparse-gaussian-process-approximations.pdf), by Bauer, van der Wilk, and Rasmussen. 
 
 * [Thoughts on Massively Scalable Gaussian Processes](https://arxiv.org/pdf/1511.01870.pdf), by Wilson, Dann, and Nickisch. 
-
-## Requirements
-* [SciPy](https://github.com/scipy/scipy) and [NumPy](https://github.com/numpy/numpy)
-
-* [pyStan](https://github.com/stan-dev/pystan)
-
-* [pybind11](https://github.com/pybind/pybind11)>=2.2
-
-* The [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page) header
-  library (assumed to be in `/usr/include/eigen3`).
-
-### Optional Extras
-
-Both [matplotlib](https://github.com/matplotlib/matplotlib) 
-and [seaborn](https://github.com/mwaskom/seaborn) are optional
-dependencies which provide extra visualisation capability.
-
-
-## Installation
-
-The package currently only works "as is" on Linux. It can be installed using `pip` from inside the apricot source directory:
-
-`pip install --user .`
-
-Please note that the package assumes the `Eigen` headers are located in `usr/include/eigen3`. Ability to change this location is planned for a future release. Those needing to change the default `Eigen` header location should modify the `ext_modules` variable inside `setup.py` to include the proper location of the `Eigen` headers.
-
-### A (Very) Brief Troubleshooting Guide For Prospective Windows or OSX Users
-
-Windows users should:
-
-* Modify `setup.py` so that the C++ files will compile correctly.
-
-* Modify the paths inside  `apricot/core/models/model_cache` to support the correct path formats.
-
-Please note that the package has **not** be tested on Windows or OSX at all.
 
 ## Acknowledgements
 
