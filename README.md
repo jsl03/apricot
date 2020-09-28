@@ -62,11 +62,11 @@ Please note that the package assumes the `Eigen` headers are located in `usr/inc
 
 ### A (Very) Brief Troubleshooting Guide For Prospective Windows or OSX Users
 
-Windows users should:
+I anticipate you will need to make the following changes:
 
 * Modify `setup.py` so that the C++ files will compile correctly.
 
-* Modify the paths inside  `apricot/core/models/model_cache` to support the correct path formats.
+* Modify the paths inside  `apricot/core/models/model_cache` to support the correct path formats for your operating system.
 
 Please note that the package has **not** be tested on Windows or OSX at all.
 
@@ -75,22 +75,29 @@ Please note that the package has **not** be tested on Windows or OSX at all.
 #### Why less than a few hundred points?
 
 The "model fit" stage of "vanilla" GP regression, as implemented by `apricot`, involves 
-a pairwise calculation between each sample from the index (input space), 
-followed by subsequent inversion of this matrix. Assuming a sample size of `N`, 
-this implies a time complexity of `O(N^3)`, which becomes prohibitive quite quickly as `N` gets larger (without employing some special techniques, at least).
-For "large" `N` (in scare quotes because by modern standards, "large" is *very* relative), storage of these matrices is also an issue.
+a pairwise calculation between each observed data point/sample. So, for a sample size of `N`, this produces a symmetrical matrix of size `(N,N)`.
+We then need to invert this matrix (or calculate it's Cholesky factor, which is more computationally convenient), which (together with the previous step)
+implies a time complexity of `O(N^3)`: This becomes prohibitive very quickly as `N` gets larger (without employing some special techniques, at least).
 
-In practical terms, this means the fit procedure will become so slow it is not worth using.
+Additionally, for "large" `N` (in scare quotes because by modern standards, "large" is *very* relative), 
+storage of these matrices (which, being square, are of size `N^2`) can also be an issue.
+
+In practical terms, this means how slow the fit procedure is scales cubicly with the number of samples, 
+and things can become unreasonably slow quite fast as a result. 
+Exactly when this "slowness" becomes prohibitive depends on the available hardware and the application context, of course:
+a model fit time of an hour or so might be acceptable if you only intend on doing the analysis once, while
+a fit time of even a few minutes might be too slow if the method is part of a larger procedure (such as, for example, a Bayesian optimisation routine).
 
 #### Why less than about 20 input dimensions?
 
-Scaling with regards to the number of input *dimensions*, `D`, is a little more nuanced. 
+Scaling with regards to the number of input *dimensions*, `D`, is a little more nuanced.
+
 [Michael Betancourt does a far better job of explaining this "curse of dimensionality" in the context of GP regression than I could](https://betanalpha.github.io/assets/case_studies/gp_part3/part3.html#6_the_inevitable_curse_of_dimensionality),  
-but the gist of it is that GP regression works by assessing some measure of "distance" (in scare quotes because this need not be a distance in the conventional sense) between points, and then determining how similar two function values ought to be based on this (with points that are "close together" or "similar" typically having similar values).
+but the gist of it is that GP regression works by assessing some measure of "distance" (in scare quotes because this need not be a distance in the conventional sense) between points, and then determining how similar two function values ought to be based on this (with points that are "close together" or "similar" typically having similar values). 
 
-By adding more dimensions (informally, more axes of comparison that points might differ across), we necessarily "spread out" the data more, and hence need more points to provide an equivalent amount of coverage in terms of the "distance" mentioned in the previous paragraph. While it is a *little* more complicated than this, this limitation interacts with the first issue (scaling with `N`) in that we start to require more sample points than is computationally sensible if `D` becomes large.
+By adding more dimensions (informally, more axes of comparison that data points can differ across), we necessarily "spread out" the data more, and hence need more points to provide an equivalent amount of coverage in terms of the distance mentioned in the previous paragraph. While this isn't *quite* the full story (it is a *little* more complicated than this, and relates to how the GP model is structured, too), this limitation interacts with the first issue (scaling with `N`) in that we start to require more sample points than is computationally sensible if `D` becomes large.
 
-#### But I want to use GP Regression for precisely those problems!
+#### I want to use GP Regression for precisely those problems!
 
 You're not alone! This is an area of active research. For currently existing solutions I suggest taking a look at the low-rank (or "sparse") and/or "special structure" GP models in either [GPyTorch](https://gpytorch.ai/) or [GPflow](https://github.com/GPflow/GPflow).
 
