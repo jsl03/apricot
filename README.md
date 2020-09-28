@@ -92,8 +92,7 @@ a fit time of even a few minutes might be too slow if the method is part of a la
 
 Scaling with regards to the number of input *dimensions*, `D`, is a little more nuanced.
 
-[Michael Betancourt does a far better job of explaining this "curse of dimensionality" in the context of GP regression than I could](https://betanalpha.github.io/assets/case_studies/gp_part3/part3.html#6_the_inevitable_curse_of_dimensionality),  
-but the gist of it is that GP regression works by assessing some measure of "distance" (in scare quotes because this need not be a distance in the conventional sense) between points, and then determining how similar two function values ought to be based on this (with points that are "close together" or "similar" typically having similar values). 
+[Michael Betancourt does a far better job of explaining this "curse of dimensionality" in the context of GP regression than I could](https://betanalpha.github.io/assets/case_studies/gp_part3/part3.html#6_the_inevitable_curse_of_dimensionality), but the gist of it is that GP regression works by assessing some measure of "distance" (in scare quotes because this need not be a distance in the conventional sense) between points, and then determining how similar two function values ought to be based on this (with points that are "close together" or "similar" typically having similar values). 
 
 By adding more dimensions (informally, more axes of comparison that data points can differ across), we necessarily "spread out" the data more, and hence need more points to provide an equivalent amount of coverage in terms of the distance mentioned in the previous paragraph. While this isn't *quite* the full story (it is a *little* more complicated than this, and relates to how the GP model is structured, too), this limitation interacts with the first issue (scaling with `N`) in that we start to require more sample points than is computationally sensible if `D` becomes large.
 
